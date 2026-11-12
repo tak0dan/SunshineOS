@@ -29,6 +29,24 @@ The scripts hand all output back to your own user, so no `sudo` is needed.
 If an AUR dependency disappears upstream, add a replacement to `DEAD_DEP` at the top of `make-iso.sh`
 (or fix the PKGBUILD in `pkgs/`).
 
+## Testing before the slow build
+
+The release ISO takes a long time because of the `xz` compression. Most problems show up without it:
+
+```
+FAST=1 ./build.sh     # test image, light compression, written to out/fast/
+test/smoke.sh         # boots it headless in QEMU with no network (about 3 minutes)
+```
+
+`test/smoke.sh` checks that the system boots and settles offline, has no failed units, that package files kept their permissions,
+that D-Bus, NetworkManager and the display manager run, and that the desktop session starts (screenshot in `test/tmp/smoke/`).
+Run it before every release build.
+
+## Publishing
+
+`tools/release-sourceforge.sh` uploads the ISO from `out/` to SourceForge as one file, checks the public link and records the
+release in the website's `release.json` (`SITE_DIR=<clone of the site repo>`).
+
 ## Layout
 
 - `profile/`  archiso profile (packages, airootfs, boot configs)
