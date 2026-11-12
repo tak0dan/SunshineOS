@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Restore points (btrfs snapshots) in plain words.
+#   sunshine-snapshot list              show restore points
+#   sunshine-snapshot create ["text"]   make one now
+#   sunshine-snapshot delete NUMBER     remove one
+#   sunshine-snapshot changes A B       files changed between two points
+#   sunshine-snapshot restore           open the graphical restore tool (Btrfs Assistant)
+# To go back after something broke: pick "Sunshine OS snapshots" in the boot menu, boot it, then restore from Btrfs Assistant.
+cmd=${1:-list}; shift || true
+[ "$(findmnt -no FSTYPE /)" = btrfs ] || { echo "Restore points need btrfs; this system uses $(findmnt -no FSTYPE /)."; exit 1; }
+[ -e /etc/snapper/configs/root ] || { echo "Restore points are not set up. Run: sudo sunshine-doctor --fix"; exit 1; }
+S() { if [ "$(id -u)" -eq 0 ]; then snapper -c root "$@"; else sudo snapper -c root "$@"; fi; }
+case "$cmd" in
+  list) S list ;;
+  create) S create -c number -d "${*:-Manual restore point}" && echo "Restore point created." ;;
+  delete) [ -n "${1:-}" ] || { echo "usage: sunshine-snapshot delete NUMBER"; exit 2; }; S delete "$1" && echo "Deleted." ;;
+  changes) [ $# -eq 2 ] || { echo "usage: sunshine-snapshot changes A B"; exit 2; }; S status "$1..$2" ;;
+  restore) exec btrfs-assistant-launcher ;;
+  *) sed -n 2,8p "$0"; exit 2 ;;
+esac

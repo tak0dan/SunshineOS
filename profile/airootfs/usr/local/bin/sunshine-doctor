@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Sunshine OS health check: identity, package manager, boot files, disk, services, snapshots.
+#   sunshine-doctor          check and report
+#   sunshine-doctor --fix    also repair what is safe to repair (never removes packages or files of yours)
+#   sunshine-doctor --quiet  only print problems
+FIX=0; Q=0
+for a in "$@"; do case "$a" in --fix) FIX=1;; --quiet) Q=1;; -h|--help) sed -n 2,6p "$0"; exit 0;; esac; done
+if [ "$FIX" = 1 ] && [ "$(id -u)" -ne 0 ]; then exec sudo "$0" "$@"; fi
+Y=$'\e[38;5;220m'; G=$'\e[32m'; R=$'\e[31m'; D=$'\e[2m'; B=$'\e[1m'; N=$'\e[0m'
+fails=0; warns=0; fixed=0
+ok()   { [ "$Q" = 1 ] || printf '  %s✔%s %s\n' "$G" "$N" "$*"; }
+warn() { warns=$((warns+1)); printf '  %s!%s %s\n' "$Y" "$N" "$*"; }
+bad()  { fails=$((fails+1)); printf '  %s✘%s %s\n' "$R" "$N" "$*"; }
+fx()   { fixed=$((fixed+1)); printf '  %s↺ fixed:%s %s\n' "$G" "$N" "$*"; }
+sec()  { [ "$Q" = 1 ] || printf '\n%s☀ %s%s\n' "$Y$B" "$*" "$N"; }
+[ "$Q" = 1 ] || printf '%sSunshine OS doctor%s  %s(%s)%s\n' "$Y$B" "$N" "$D" "$( [ $FIX = 1 ] && echo 'check + repair' || echo 'check only; add --fix to repair')" "$N"
+
+sec "Identity"
+if /usr/local/bin/sunshine-identity check --quiet; then ok "this is Sunshine OS ($(. /etc/os-release; echo "$PRETTY_NAME"))"
+else bad "system identity was changed (an update replaced os-release/issue)"
+  [ $FIX = 1 ] && /usr/local/bin/sunshine-identity apply --quiet && fx "identity restored"; fi
+
+sec "Package manager"
+if [ -e /var/lib/pacman/db.lck ]; then
+  if pgrep -x pacman >/dev/null; then warn "a package operation is running right now"
+  else bad "stale lock file /var/lib/pacman/db.lck"; [ $FIX = 1 ] && rm -f /var/lib/pacman/db.lck && fx "lock removed"; fi
+else ok "no lock file"; fi
+if [ -d /etc/pacman.d/gnupg ] && pacman-key --list-keys 2>/dev/null | grep -qi 'Arch Linux'; then ok "package keyring present"
+else bad "package keyring missing or empty"
+  [ $FIX = 1 ] && pacman-key --init >/dev/null 2>&1 && pacman-key --populate archlinux >/dev/null 2>&1 && fx "keyring initialised"; fi
+if out=$(pacman -Dk 2>&1); then ok "package database consistent"; else bad "package database problem: $(echo "$out" | head -2 | tr '\n' ' ')"; fi
+n=$(find /etc -name '*.pacnew' 2>/dev/null | wc -l); [ "$n" -gt 0 ] && warn "$n config update(s) waiting for review (*.pacnew)" || ok "no pending .pacnew files"
+if grep -q '^\[sunshine-hypr\]' /etc/pacman.conf 2>/dev/null; then warn "installer leftover [sunshine-hypr] in pacman.conf"; fi
+for p in sddm plasma-desktop hyprland snapper; do pacman -Qq $p >/dev/null 2>&1 || warn "expected package not installed: $p"; done
+
+sec "Desktop"
+if pacman -Qq ttf-material-symbols-variable-git >/dev/null 2>&1; then
+  have=$(pacman -Q ttf-material-symbols-variable-git | awk '{print $2}'); keep=$(ls /usr/share/sunshine/pkgs/ttf-material-symbols-variable-git-*.pkg.tar.zst 2>/dev/null | head -1)
+  want=$(basename "${keep:-x}" | sed -E 's/^ttf-material-symbols-variable-git-(.*)-any\.pkg\.tar\.zst$/\1/')
+  if [ -z "$keep" ] || [ "$have" = "$want" ]; then ok "icon font is the tested version ($have)"
+  else bad "icon font was replaced by $have (tested: $want): Hyprland icons show as odd letters"
+    [ $FIX = 1 ] && pacman -U --noconfirm "$keep" >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1 && fx "tested icon font restored (log out and in again)"; fi
+fi
+if ls /home/*/.cache/hyprland/hyprlandCrashReport*.txt >/dev/null 2>&1; then
+  last=$(ls -t /home/*/.cache/hyprland/hyprlandCrashReport*.txt | head -1)
+  if grep -q 'eglInitialize\|EGL_NOT_INITIALIZED\|failed to create screen' "$last" 2>/dev/null; then
+    warn "Hyprland crashed because the graphics card has no 3D (virtual machine?): enable 3D acceleration in the VM settings, or use Plasma"
+  else warn "Hyprland crashed before ($(basename "$last")); Plasma is the fallback session"; fi
+fi
+if [ -n "$(ls /usr/share/wayland-sessions/hyprland*.desktop 2>/dev/null)" ] && ! grep -rq 'sunshine/wayland-sessions' /etc/sddm.conf.d 2>/dev/null; then warn "login screen lists the stock Hyprland sessions (no safety net)"; fi
+
+sec "Boot"
+[ -f /boot/vmlinuz-linux ] && ok "kernel image present" || bad "/boot/vmlinuz-linux missing"
+[ -f /boot/initramfs-linux.img ] && ok "initramfs present" || { bad "/boot/initramfs-linux.img missing"
+  if [ $FIX = 1 ] && kv=$(ls /usr/lib/modules | head -1) && mkinitcpio -k "$kv" -g /boot/initramfs-linux.img >/dev/null 2>&1; then fx "initramfs rebuilt"; fi; }
+if [ -f /boot/vmlinuz-linux ] && [ "$(findmnt -no FSTYPE /boot 2>/dev/null || findmnt -no FSTYPE /)" = btrfs ]; then
+  # GRUB cannot read btrfs files that end in a hole ("premature end of file")
+  if python3 -I - <<'PY'
+import os,sys
+f=os.open("/boot/vmlinuz-linux",os.O_RDONLY); sz=os.fstat(f).st_size
+try: h=os.lseek(f,0,os.SEEK_HOLE)
+except OSError: sys.exit(0)
+sys.exit(0 if h>=sz else 1)
+PY
+  then ok "kernel image fully allocated (GRUB can read it)"
+  else bad "kernel image has holes: GRUB would fail with 'premature end of file'"
+    if [ $FIX = 1 ]; then cp --sparse=never --reflink=never /boot/vmlinuz-linux /boot/vmlinuz-linux.dense && mv -f /boot/vmlinuz-linux.dense /boot/vmlinuz-linux && fx "kernel rewritten"; fi; fi
+fi
+[ -f /boot/grub/grub.cfg ] && ok "GRUB menu present" || { bad "/boot/grub/grub.cfg missing"; [ $FIX = 1 ] && grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 && fx "GRUB menu regenerated"; }
+if [ -d /sys/firmware/efi ]; then mountpoint -q /boot/efi && ok "EFI partition mounted" || warn "EFI partition not mounted at /boot/efi (kernel/GRUB updates may not reach it)"; fi
+if findmnt --verify >/dev/null 2>&1; then ok "/etc/fstab consistent"; else warn "/etc/fstab has problems (run: findmnt --verify)"; fi
+
+sec "System"
+fu=$(systemctl --failed --no-legend 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
+[ -z "${fu// }" ] && ok "no failed services" || warn "failed services: $fu"
+use=$(df --output=pcent / | tail -1 | tr -dc 0-9)
+if [ "${use:-0}" -ge 95 ]; then bad "root disk ${use}% full"; elif [ "${use:-0}" -ge 85 ]; then warn "root disk ${use}% full"; else ok "root disk ${use}% used"; fi
+[ "$(systemctl is-active NetworkManager 2>/dev/null)" = active ] && ok "network service running" || warn "NetworkManager is not running"
+[ -d "/usr/lib/modules/$(uname -r)" ] && ok "running kernel matches installed modules" || warn "kernel was updated: restart to use it"
+
+sec "Restore points"
+fs=$(findmnt -no FSTYPE / 2>/dev/null)
+if [ "$fs" != btrfs ]; then warn "root is $fs: restore points need btrfs (choose btrfs when installing)"
+else
+  if [ -e /etc/snapper/configs/root ]; then ok "snapper configured for /"
+  else bad "snapper is not configured"; [ $FIX = 1 ] && /usr/local/bin/sunshine-snapshots-setup / >/dev/null 2>&1 && fx "snapshots set up"; fi
+  for u in snapper-timeline.timer snapper-cleanup.timer grub-btrfsd.service; do
+    systemctl is-enabled "$u" >/dev/null 2>&1 && ok "$u enabled" || { warn "$u not enabled"; [ $FIX = 1 ] && systemctl enable --now "$u" >/dev/null 2>&1 && fx "$u enabled"; }; done
+  if [ -e /etc/snapper/configs/root ]; then
+    c=$(snapper -c root list --columns number 2>/dev/null | grep -c '^ *[1-9]')
+    [ "${c:-0}" -gt 0 ] && ok "$c restore point(s) available" || warn "no restore points yet (sunshine-snapshot create)"
+  fi
+  pacman -Q snap-pac >/dev/null 2>&1 && ok "automatic snapshot before/after every update (snap-pac)" || warn "snap-pac missing: updates are not snapshotted"
+  grep -q 'grub-btrfs\|snapshots-btrfs' /boot/grub/grub.cfg 2>/dev/null && ok "snapshots appear in the GRUB menu" || warn "no snapshot entries in the GRUB menu yet"
+fi
+
+echo
+if [ $fails -eq 0 ]; then printf '%s%sAll good%s' "$G" "$B" "$N"; [ $warns -gt 0 ] && printf ' (%s note(s))' "$warns"; echo
+else printf '%s%s%s problem(s) found%s' "$R" "$B" "$fails" "$N"; [ $FIX = 0 ] && printf ' — run: sunshine-doctor --fix'; echo; fi
+exit $((fails>0))

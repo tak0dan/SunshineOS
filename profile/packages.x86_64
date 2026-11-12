@@ -163,7 +163,6 @@ zram-generator
 python-pyqt6
 flatpak
 packagekit-qt6
-timeshift
 pacman-contrib
 kdialog
 gst-plugins-good
@@ -256,3 +255,10 @@ syntax-highlighting
 glib2
 libqalculate
 zen-browser-bin
+snapper
+snap-pac
+grub-btrfs
+btrfs-assistant
+inotify-tools
+paru-bin
+lsd

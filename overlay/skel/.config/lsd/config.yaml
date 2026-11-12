@@ -1,0 +1,7 @@
+# Sunshine OS lsd: Nerd Font icons, folders first
+icons:
+  when: auto
+  theme: fancy
+  separator: " "
+sorting:
+  dir-grouping: first

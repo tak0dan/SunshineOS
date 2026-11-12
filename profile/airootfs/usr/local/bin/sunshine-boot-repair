@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Repair the boot loader of this installed system: initramfs, kernel image, GRUB, boot menu.
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+Y=$'\e[38;5;220m'; G=$'\e[32m'; R=$'\e[31m'; B=$'\e[1m'; N=$'\e[0m'
+sec() { printf '\n%s☀ %s%s\n' "$Y$B" "$*" "$N"; }
+[ -d /run/archiso ] && { echo "Run this on the installed system, not from the live ISO."; exit 1; }
+read -rp "Reinstall GRUB and rebuild the boot files of this system? [y/N] " a; [ "${a,,}" = y ] || exit 0
+sec "Kernel and initramfs"
+kv=$(ls /usr/lib/modules | head -1)
+[ -f "/usr/lib/modules/$kv/vmlinuz" ] && cp --sparse=never --reflink=never "/usr/lib/modules/$kv/vmlinuz" /boot/vmlinuz-linux && chmod 644 /boot/vmlinuz-linux && echo "kernel image rewritten"
+mkinitcpio -k "$kv" -g /boot/initramfs-linux.img 2>&1 | tail -2
+sec "GRUB"
+if [ -d /sys/firmware/efi ]; then
+  mountpoint -q /boot/efi || mount /boot/efi 2>/dev/null || { echo "${R}EFI partition is not mounted at /boot/efi${N}"; exit 1; }
+  grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=SunshineOS --recheck 2>&1 | tail -2
+  grub-install --target=x86_64-efi --efi-directory=/boot/efi --removable --recheck 2>&1 | tail -2
+else
+  src=$(findmnt -no SOURCE / | sed 's/\[.*//'); disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -1)
+  [ -n "$disk" ] || { echo "${R}cannot find the boot disk${N}"; exit 1; }
+  grub-install --target=i386-pc --recheck "/dev/$disk" 2>&1 | tail -2
+fi
+grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tail -3
+printf '\n%sDone. Restart to test the boot menu.%s\n' "$G$B" "$N"

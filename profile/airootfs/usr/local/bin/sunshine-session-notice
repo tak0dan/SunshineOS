@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Plasma autostart: tell the user when Hyprland could not start and Plasma was started instead.
+M="${XDG_STATE_HOME:-$HOME/.local/state}/sunshine/hyprland-failed"
+[ -f "$M" ] || exit 0
+sleep 8
+if [ -n "$(find "$M" -mmin -10 2>/dev/null)" ]; then
+  notify-send -i dialog-warning -u normal "Hyprland could not start" "You are in Plasma instead. On a virtual machine, turn on 3D acceleration. Otherwise open Sunshine Toolbox → Health check."
+fi
+rm -f "$M"

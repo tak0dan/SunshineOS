@@ -84,6 +84,7 @@ class Welcome(QWidget):
             ("🛟  Restore points\nUndo a bad change (snapshots)", self.snapshots),
             ("🌐  Enable Flathub\nThousands more apps", self.flathub),
             ("⚙  Settings\nLook, keyboard, language, network", lambda: run(["systemsettings"])),
+            ("🧰  Toolbox\nHealth check, clean up, repair", lambda: run(["sunshine-toolbox"])),
             ("❓  Help && tips\nWhat to do if something is wrong", self.tips),
         ]
         for i, (label, fn) in enumerate(items):
@@ -127,10 +128,14 @@ class Welcome(QWidget):
         run(["sunshine-update"])
 
     def snapshots(self):
-        if shutil.which("timeshift-launcher"):
-            run(["pkexec", "env", f"DISPLAY={os.environ.get('DISPLAY', ':0')}",
-                 f"WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY', '')}",
-                 f"XDG_RUNTIME_DIR={os.environ.get('XDG_RUNTIME_DIR', '')}", "timeshift-launcher"])
+        on_btrfs = subprocess.run(["findmnt", "-no", "FSTYPE", "/"], capture_output=True, text=True).stdout.strip() == "btrfs"
+        if on_btrfs and shutil.which("btrfs-assistant-launcher"):
+            run(["btrfs-assistant-launcher"])
+        else:
+            terminal("echo 'Restore points need the btrfs file system.'; echo; "
+                     "echo 'This computer uses a different one, so they are not available.'; "
+                     "echo 'Choose btrfs when installing Sunshine OS to get them.'; echo; read -rp 'Press Enter to close.'",
+                     "Restore points")
 
     def flathub(self):
         terminal("echo 'Enabling Flathub (needs an internet connection)...'; "

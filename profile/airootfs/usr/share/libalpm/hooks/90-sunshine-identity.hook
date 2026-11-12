@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = lsb-release
+Target = base
+
+[Action]
+Description = Keeping the Sunshine OS identity...
+When = PostTransaction
+Exec = /usr/local/bin/sunshine-identity apply --quiet

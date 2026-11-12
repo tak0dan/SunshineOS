@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Live session only: give the live user a home built from /etc/skel (the ISO ships a pre-made, empty home).
 U=sunshine
+/usr/local/bin/sunshine-identity apply --quiet 2>/dev/null   # /usr/lib/os-release still says Arch inside the image
 [ -d /home/$U ] || mkdir -p /home/$U
 cp -an /etc/skel/. /home/$U/ 2>/dev/null
 chown -R $U:$U /home/$U

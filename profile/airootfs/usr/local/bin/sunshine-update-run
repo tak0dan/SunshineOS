@@ -29,10 +29,10 @@ if command -v checkupdates >/dev/null; then
   [ "$n" -gt 0 ] && { echo "$n package update(s) available."; } || echo "No system package updates right now."
 fi
 
-if command -v timeshift >/dev/null && timeshift --list 2>/dev/null | grep -q 'Snapshots'; then
-  say "Creating a restore point first (so you can go back if anything breaks)"
-  timeshift --create --comments "Before Sunshine update" --tags D >/dev/null 2>&1 && ok "Restore point created" || bad "Could not create a restore point (continuing)"
+if [ "$(findmnt -no FSTYPE /)" = btrfs ] && [ -e /etc/snapper/configs/root ]; then
+  ok "Restore points are made automatically before and after the update (go back from the boot menu if anything breaks)"
 fi
+/usr/local/bin/sunshine-identity check --quiet || { /usr/local/bin/sunshine-identity apply --quiet && ok "System identity restored"; }
 
 say "Updating system packages"
 if pacman -Syu; then ok "System packages are up to date"; else bad "The system update did not finish. Nothing is broken by stopping; you can run the update again."; finish 1; fi
@@ -53,5 +53,7 @@ pn=$(find /etc -name '*.pacnew' 2>/dev/null | head -5)
 if [ -d /usr/lib/modules ] && ! [ -d "/usr/lib/modules/$(uname -r)" ]; then
   printf '\n%sThe kernel was updated. Please restart your computer when convenient.%s\n' "$Y" "$N"
 fi
+say "Health check"
+/usr/local/bin/sunshine-doctor --fix --quiet || true
 ok "All done"
 finish 0

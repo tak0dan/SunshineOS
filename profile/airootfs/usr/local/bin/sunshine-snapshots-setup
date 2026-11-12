@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Sets up btrfs snapshots on an installed system: snapper config for /, automatic timeline + cleanup, snapshots before and after
+# every package update (snap-pac) and bootable snapshots in the GRUB menu (grub-btrfs). Does nothing on other filesystems.
+# Used by the installers (target root as argument) and by `sunshine-doctor --fix` (target /).
+# usage: sunshine-snapshots-setup [target-root]
+set -u
+ROOT=${1:-/}; ROOT=${ROOT%/}; [ -z "$ROOT" ] && ROOT=/
+CH() { if [ "$ROOT" = / ]; then "$@"; else chroot "$ROOT" "$@"; fi; }
+fs=$(findmnt -no FSTYPE --target "$ROOT" 2>/dev/null | head -1)
+[ "$fs" = btrfs ] || { echo "snapshots: root filesystem is ${fs:-unknown}, not btrfs; snapshots are not available (skipping)"; exit 0; }
+[ -x "$ROOT/usr/bin/snapper" ] || { echo "snapshots: snapper is not installed"; exit 1; }
+if [ "$ROOT" != / ]; then for d in proc sys dev; do mountpoint -q "$ROOT/$d" || mount --rbind /$d "$ROOT/$d" 2>/dev/null; done; fi
+
+if [ ! -e "$ROOT/etc/snapper/configs/root" ]; then
+  # a leftover plain /.snapshots directory would make create-config fail
+  [ -d "$ROOT/.snapshots" ] && ! btrfs subvolume show "$ROOT/.snapshots" >/dev/null 2>&1 && rmdir "$ROOT/.snapshots" 2>/dev/null
+  CH snapper --no-dbus -c root create-config / || { echo "snapshots: create-config failed"; exit 1; }
+fi
+# keep few snapshots: a laptop SSD is not an archive. Pre/post pairs come from snap-pac.
+CH snapper --no-dbus -c root set-config TIMELINE_CREATE=yes TIMELINE_CLEANUP=yes NUMBER_CLEANUP=yes \
+  NUMBER_LIMIT=8 NUMBER_LIMIT_IMPORTANT=4 TIMELINE_LIMIT_HOURLY=3 TIMELINE_LIMIT_DAILY=3 TIMELINE_LIMIT_WEEKLY=1 \
+  TIMELINE_LIMIT_MONTHLY=0 TIMELINE_LIMIT_YEARLY=0 SPACE_LIMIT=0.2 || true
+CH systemctl enable snapper-timeline.timer snapper-cleanup.timer grub-btrfsd.service sunshine-first-snapshot.service >/dev/null 2>&1 || true
+# read-only snapshots boot through an overlay (grub-btrfs): the initramfs needs its hook
+c="$ROOT/etc/mkinitcpio.conf.d/sunshine.conf"
+if [ -f "$c" ] && [ -e "$ROOT/usr/lib/initcpio/install/grub-btrfs-overlayfs" ] && ! grep -q grub-btrfs-overlayfs "$c"; then
+  sed -i 's/^\(HOOKS=(.*\))/\1 grub-btrfs-overlayfs)/' "$c"
+fi
+mkdir -p "$ROOT/etc/default/grub-btrfs"
+if [ -f "$ROOT/etc/default/grub-btrfs/config" ]; then
+  sed -i 's|^#\?GRUB_BTRFS_SUBMENUNAME=.*|GRUB_BTRFS_SUBMENUNAME="Sunshine OS snapshots"|' "$ROOT/etc/default/grub-btrfs/config"
+fi
+echo "snapshots: configured (the first restore point is created at first boot)"
+if [ "$ROOT" = / ]; then
+  ls /.snapshots/*/info.xml >/dev/null 2>&1 || snapper -c root create -d "Restore point (setup)" >/dev/null 2>&1
+  systemctl start grub-btrfsd.service >/dev/null 2>&1 || true
+  command -v grub-mkconfig >/dev/null && [ -d /boot/grub ] && grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
+fi
+exit 0

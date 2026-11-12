@@ -10,8 +10,10 @@ fi
 start=$(date +%s)
 /usr/bin/start-hyprland >>"$LOG" 2>&1
 rc=$?
-if [ $rc -ne 0 ] && [ $(( $(date +%s) - start )) -lt 25 ]; then
+# start-hyprland restarts a crashing compositor a few times, so "died early" must cover that whole sequence (3 minutes)
+if [ $rc -ne 0 ] && [ $(( $(date +%s) - start )) -lt 180 ]; then
     echo "$(date '+%F %T') Hyprland exited with $rc after $(( $(date +%s) - start ))s, starting Plasma instead" >>"$LOG"
+    date +%s > "$(dirname "$LOG")/hyprland-failed"   # Plasma shows a notice about it (sunshine-session-notice)
     exec /usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland
 fi
 exit $rc

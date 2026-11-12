@@ -12,10 +12,10 @@ bindkey -e
 [ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 command -v starship >/dev/null && eval "$(starship init zsh)"
 command -v zoxide   >/dev/null && eval "$(zoxide init zsh --cmd cd)"
-if command -v eza >/dev/null; then
-  alias ls='eza --icons --group-directories-first'; alias ll='eza -l --icons --group-directories-first --git'; alias la='eza -la --icons'
+if command -v lsd >/dev/null; then
+  alias ls='lsd --group-dirs first'; alias ll='lsd -l --group-dirs first'; alias la='lsd -la --group-dirs first'; alias lt='lsd --tree --depth 2'
 fi
 command -v bat >/dev/null && alias cat='bat --paging=never --style=plain'
 alias update='sunshine-update'; alias store='sunshine-store'
-alias install='sudo pacman -S'; alias remove='sudo pacman -Rns'; alias search='pacman -Ss'; alias aur='yay -S'
+alias install='sudo pacman -S'; alias remove='sudo pacman -Rns'; alias search='pacman -Ss'; alias aur='paru -S'
 [ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

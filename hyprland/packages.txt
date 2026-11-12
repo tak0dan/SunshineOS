@@ -112,3 +112,4 @@ syntax-highlighting
 libqalculate
 cava
 fastfetch
+lsd

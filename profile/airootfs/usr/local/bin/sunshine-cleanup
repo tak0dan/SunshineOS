@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Free disk space safely: old package files, unused packages (asks first), old logs, old restore points.
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+Y=$'\e[38;5;220m'; G=$'\e[32m'; B=$'\e[1m'; N=$'\e[0m'
+sec() { printf '\n%s☀ %s%s\n' "$Y$B" "$*" "$N"; }
+free_before=$(df --output=avail -B1 / | tail -1)
+sec "Old package files"
+command -v paccache >/dev/null && paccache -rk1 || echo "paccache missing (install pacman-contrib)"
+pacman -Sc --noconfirm >/dev/null 2>&1 <<<"" ; echo "downloaded files of removed packages cleaned"
+sec "Unused packages (installed only as dependencies, nothing needs them)"
+orph=$(pacman -Qdtq 2>/dev/null)
+if [ -n "$orph" ]; then
+  echo "$orph" | sed 's/^/  /'
+  read -rp "Remove these $(echo "$orph" | wc -l) packages? [y/N] " a
+  [ "${a,,}" = y ] && pacman -Rns --noconfirm $orph
+else echo "none"; fi
+sec "Logs and crash dumps"
+journalctl --vacuum-size=200M 2>&1 | tail -1
+rm -rf /var/lib/systemd/coredump/* 2>/dev/null; echo "crash dumps removed"
+if [ "$(findmnt -no FSTYPE /)" = btrfs ] && [ -e /etc/snapper/configs/root ]; then
+  sec "Old restore points"; snapper -c root cleanup number; snapper -c root cleanup timeline; echo "done (the newest ones are kept)"
+fi
+free_after=$(df --output=avail -B1 / | tail -1)
+printf '\n%sFreed about %s MB.%s\n' "$G$B" "$(( (free_after-free_before)/1048576 ))" "$N"

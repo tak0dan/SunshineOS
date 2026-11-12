@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Adds two native logos to fastfetch: "Sunshine" (the Sunshine Hyprland dots) and "Sunshine_OS" (this distribution;
+# picked automatically because os-release says ID=sunshineos). It downloads the source of the INSTALLED fastfetch version,
+# applies /usr/share/sunshine/fastfetch/sunshine-logos.patch on top, builds it and replaces the binary.
+# Called by the installer and by the pacman hook after every fastfetch install/upgrade. If anything fails the stock
+# fastfetch stays untouched (it still works; only the two logos are missing).
+PATCH=/usr/share/sunshine/fastfetch/sunshine-logos.patch
+LOG=/var/log/sunshine/fastfetch-patch.log; mkdir -p "$(dirname "$LOG")"
+exec > >(tee -a "$LOG") 2>&1
+echo "== $(date) sunshine-fastfetch-patch"
+[ -x /usr/bin/fastfetch ] && [ -f "$PATCH" ] || { echo "fastfetch or patch missing; nothing to do"; exit 0; }
+if /usr/bin/fastfetch --list-logos 2>/dev/null | grep -q '"Sunshine_OS"'; then echo "already has the Sunshine logos"; exit 0; fi
+for t in cmake make gcc patch curl tar; do command -v $t >/dev/null || { echo "missing build tool: $t (stock fastfetch kept)"; exit 0; }; done
+ver=$(pacman -Q fastfetch 2>/dev/null | awk '{print $2}' | sed 's/-[^-]*$//')
+[ -n "$ver" ] || { echo "cannot read fastfetch version"; exit 0; }
+tmp=$(mktemp -d /var/tmp/sunshine-ff.XXXXXX); trap 'rm -rf "$tmp"' EXIT
+echo "fastfetch $ver: fetching source"
+curl -fsSL --retry 3 --max-time 120 -o "$tmp/src.tgz" "https://github.com/fastfetch-cli/fastfetch/archive/refs/tags/$ver.tar.gz" || { echo "download failed (stock fastfetch kept)"; exit 0; }
+tar -xzf "$tmp/src.tgz" -C "$tmp" && cd "$tmp"/fastfetch-* || { echo "unpack failed"; exit 0; }
+patch -p1 --no-backup-if-mismatch < "$PATCH" >/dev/null || { echo "patch does not apply to $ver (stock fastfetch kept)"; exit 0; }
+echo "building (about a minute)"
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_FLASHFETCH=OFF -DBUILD_TESTS=OFF -DENABLE_SYSTEM_YYJSON=ON -Wno-dev >/dev/null 2>&1 \
+  && cmake --build build -j"$(nproc)" >/dev/null 2>&1 || { echo "build failed (stock fastfetch kept)"; exit 0; }
+build/fastfetch --list-logos 2>/dev/null | grep -q '"Sunshine_OS"' || { echo "built binary lacks the logos (stock fastfetch kept)"; exit 0; }
+install -Dm755 build/fastfetch /usr/bin/fastfetch.sunshine && mv -f /usr/bin/fastfetch.sunshine /usr/bin/fastfetch && echo "fastfetch $ver now has the Sunshine and Sunshine_OS logos"
+exit 0

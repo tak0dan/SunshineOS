@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = fastfetch
+
+[Action]
+Description = Adding the Sunshine logos to fastfetch (patch on top of the new version)...
+When = PostTransaction
+Exec = /usr/local/bin/sunshine-fastfetch-patch

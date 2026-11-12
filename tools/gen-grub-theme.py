@@ -44,9 +44,9 @@ for f in os.listdir(f"{src}/assets/logos/1080p"):
     shutil.copy(f"{src}/assets/logos/1080p/{f}", f"{out}/icons/{f}")
 lg = Image.open(logo).convert("RGBA")
 ic = Image.open(icon).convert("RGBA")
-for alias in ("sunshineos.png", "arch.png", "archlinux.png"):
+for alias in ("sunshineos.png", "sunshine.png", "gnu-linux.png", "linux.png", "os.png", "arch.png", "archlinux.png"):
     ic.resize((32, 32), Image.LANCZOS).save(out + "/icons/" + alias)
-lg.resize((220, 220), Image.LANCZOS).save(out + "/logo.png")
+lg.resize((150, 150), Image.LANCZOS).save(out + "/logo.png")
 
 open(out + "/theme.txt", "w").write('''# Sunshine OS GRUB theme (layout after Graphite by vinceliuice; gray, charcoal and pastel orange)
 title-text: ""
@@ -60,13 +60,13 @@ terminal-width: "100%"
 terminal-height: "100%"
 terminal-border: "0"
 
-+ image { left = 50%-110  top = 8%  width = 220  height = 220  file = "logo.png" }
++ image { left = 50%-75  top = 5%  width = 150  height = 150  file = "logo.png" }
 
 + boot_menu {
-  left = 31%
-  top = 42%
-  width = 38%
-  height = 32%
+  left = 22%
+  top = 49%
+  width = 56%
+  height = 34%
   item_font = "Unifont Regular 16"
   item_color = "#e8dcc8"
   selected_item_color = "#2a1a0e"
@@ -80,14 +80,14 @@ terminal-border: "0"
 }
 
 # panel behind the menu (components listed later are drawn underneath)
-+ image { left = 30%  top = 40%  width = 40%  height = 36%  file = "viewbox.png" }
++ image { left = 21%  top = 47%  width = 58%  height = 38%  file = "viewbox.png" }
 
 + image { top = 100%-50  left = 50%-240  width = 480  height = 42  file = "info.png" }
 
 + label {
-  top = 80%
-  left = 30%
-  width = 40%
+  top = 87%
+  left = 21%
+  width = 58%
   align = "center"
   id = "__timeout__"
   text = "Starting in %d seconds"

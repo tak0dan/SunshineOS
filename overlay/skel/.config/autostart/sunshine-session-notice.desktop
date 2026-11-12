@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine session notice
+Exec=/usr/local/bin/sunshine-session-notice
+OnlyShowIn=KDE;
+X-KDE-autostart-after=panel

@@ -2,7 +2,7 @@
 # Sunshine OS installer: copies the live system to disk (offline, no network needed).
 # Interactive (dialog) by default. Non-interactive: SUNSHINE_AUTO=1 plus
 #   SUNSHINE_DISK=/dev/xxx SUNSHINE_USER=name SUNSHINE_PASS=secret [SUNSHINE_HOSTNAME=..
-#   SUNSHINE_TZ=Europe/Madrid SUNSHINE_LOCALE=en_US.UTF-8 SUNSHINE_KEYMAP=us SUNSHINE_FS=ext4|btrfs]
+#   SUNSHINE_TZ=Europe/Madrid SUNSHINE_LOCALE=en_US.UTF-8 SUNSHINE_KEYMAP=us SUNSHINE_FS=ext4|btrfs SUNSHINE_ENCRYPT=yes SUNSHINE_LUKS_PASS=phrase]
 set -uo pipefail
 
 TITLE="Sunshine OS Installer"
@@ -57,6 +57,7 @@ info() { echo "==> $*"; }
 
 cleanup() {
   mountpoint -q "$MNT" && { sync; umount -R "$MNT" 2>/dev/null || umount -Rl "$MNT" 2>/dev/null; }
+  [ -e /dev/mapper/cryptroot ] && cryptsetup close cryptroot 2>/dev/null
 }
 trap 'cleanup' EXIT
 
@@ -91,7 +92,9 @@ PASS=${SUNSHINE_PASS:-}
 TZ_=${SUNSHINE_TZ:-UTC}
 LOCALE=${SUNSHINE_LOCALE:-en_US.UTF-8}
 KEYMAP=${SUNSHINE_KEYMAP:-us}
-FS=${SUNSHINE_FS:-ext4}
+FS=${SUNSHINE_FS:-btrfs}
+ENCRYPT=${SUNSHINE_ENCRYPT:-no}        # yes: LUKS-encrypt the system (passphrase asked at every boot)
+LUKSPASS=${SUNSHINE_LUKS_PASS:-}
 
 if [ "$AUTO" != 1 ]; then
   ask_input HOSTNAME_ "Computer name:" "$HOSTNAME_"
@@ -126,11 +129,21 @@ if [ "$AUTO" != 1 ]; then
   if [ "$KEYMAP" = more ]; then
     KEYMAP=$(dialog --stdout --title "$TITLE" --no-tags --menu "All keyboard layouts:" 22 60 14 $(awk '{print $1, $1}' <<<"$allmaps")) || { cleanup; exit 130; }
   fi
-  FS=$(dialog --stdout --title "$TITLE" --menu "Filesystem:" 10 50 2 ext4 "ext4 (simple, robust)" btrfs "btrfs (snapshots, compression)") || { cleanup; exit 130; }
-  dialog --title "$TITLE" --yesno "Ready to install:\n\n  Disk:      $DISK  (ERASED)\n  Boot mode: $BOOT\n  Hostname:  $HOSTNAME_\n  User:      $USERNAME\n  Time zone: $TZ_\n  Language:  $LOCALE\n  Keyboard:  $KEYMAP\n  Filesystem: $FS\n\nContinue?" 18 60 || { cleanup; exit 130; }
+  FS=$(dialog --stdout --title "$TITLE" --menu "Filesystem:" 10 60 2 btrfs "btrfs (restore points, recommended)" ext4 "ext4 (simple, no restore points)") || { cleanup; exit 130; }
+  if dialog --title "$TITLE" --defaultno --yesno "Encrypt the whole system?\n\nA passphrase will be asked every time the computer starts.\nIf it is forgotten, the data cannot be recovered." 11 62; then
+    ENCRYPT=yes
+    while :; do
+      LUKSPASS=$(dialog --stdout --insecure --passwordbox "Disk encryption passphrase:" 10 64) || { cleanup; exit 130; }
+      l2=$(dialog --stdout --insecure --passwordbox "Repeat the passphrase:" 10 64) || { cleanup; exit 130; }
+      [ -n "$LUKSPASS" ] && [ "$LUKSPASS" = "$l2" ] && break
+      dialog --title "$TITLE" --msgbox "The passphrases are empty or do not match. Try again." 7 56
+    done
+  fi
+  dialog --title "$TITLE" --yesno "Ready to install:\n\n  Disk:      $DISK  (ERASED)\n  Boot mode: $BOOT\n  Hostname:  $HOSTNAME_\n  User:      $USERNAME\n  Time zone: $TZ_\n  Language:  $LOCALE\n  Keyboard:  $KEYMAP\n  Filesystem: $FS\n  Encrypted:  $ENCRYPT\n\nContinue?" 18 60 || { cleanup; exit 130; }
 fi
 [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid username '$USERNAME'."
 [ -n "$PASS" ] || die "Empty password."
+[ "$ENCRYPT" = yes ] && [ -z "$LUKSPASS" ] && LUKSPASS=$PASS
 case "$FS" in ext4|btrfs) ;; *) die "Unsupported filesystem $FS";; esac
 [ -e "/usr/share/zoneinfo/$TZ_" ] || die "Unknown time zone $TZ_"
 
@@ -150,14 +163,32 @@ partprobe "$DISK"; udevadm settle; sleep 1
 case "$DISK" in *[0-9]) P="${DISK}p";; *) P="$DISK";; esac
 ESP="${P}1"; ROOT="${P}2"
 [ -b "$ROOT" ] || die "Partition $ROOT did not appear."
+RAWROOT=$ROOT
+if [ "$ENCRYPT" = yes ]; then
+  info "Encrypting the system partition"
+  # LUKS1: GRUB reads it directly, so the boot menu can unlock the disk (LUKS2 with Argon2 is not readable by GRUB)
+  printf %s "$LUKSPASS" | cryptsetup luksFormat --type luks1 --batch-mode "$RAWROOT" - || die "cryptsetup luksFormat failed"
+  printf %s "$LUKSPASS" | cryptsetup open "$RAWROOT" cryptroot - || die "cryptsetup open failed"
+  ROOT=/dev/mapper/cryptroot
+fi
 
 info "Formatting"
 [ "$BOOT" = uefi ] && { mkfs.fat -F32 -n SUNSHINEESP "$ESP" >/dev/null || die "mkfs.fat failed"; }
-if [ "$FS" = btrfs ]; then mkfs.btrfs -f -L sunshine "$ROOT" >/dev/null || die "mkfs.btrfs failed"; MOPT="compress=zstd,noatime"
+if [ "$FS" = btrfs ]; then mkfs.btrfs -f -L sunshine "$ROOT" >/dev/null || die "mkfs.btrfs failed"; MOPT="noatime"
 else mkfs.ext4 -F -L sunshine "$ROOT" >/dev/null || die "mkfs.ext4 failed"; MOPT="noatime"; fi
 
 mkdir -p "$MNT"
-mount -o "$MOPT" "$ROOT" "$MNT" || die "mount root failed"
+if [ "$FS" = btrfs ]; then
+  # same layout as the graphical installer: @ (system), @home, @cache, @log
+  mount "$ROOT" "$MNT" || die "mount root failed"
+  for sv in @ @home @cache @log; do btrfs subvolume create "$MNT/$sv" >/dev/null || die "btrfs subvolume $sv failed"; done
+  umount "$MNT"
+  mount -o "$MOPT,subvol=@" "$ROOT" "$MNT" || die "mount root failed"
+  mkdir -p "$MNT"/home "$MNT"/var/cache "$MNT"/var/log
+  mount -o "$MOPT,subvol=@home" "$ROOT" "$MNT/home" && mount -o "$MOPT,subvol=@cache" "$ROOT" "$MNT/var/cache" && mount -o "$MOPT,subvol=@log" "$ROOT" "$MNT/var/log" || die "mount subvolumes failed"
+else
+  mount -o "$MOPT" "$ROOT" "$MNT" || die "mount root failed"
+fi
 if [ "$BOOT" = uefi ]; then mkdir -p "$MNT/boot/efi"; mount "$ESP" "$MNT/boot/efi" || die "mount ESP failed"; fi
 
 # ---------- copy system ----------
@@ -174,6 +205,12 @@ done
 [ -f "$MNT/boot/vmlinuz-linux" ] || die "No kernel found in the system image."
 
 genfstab -U "$MNT" > "$MNT/etc/fstab" || die "genfstab failed"
+if [ "$ENCRYPT" = yes ]; then
+  # key file inside the (encrypted) system and its initramfs: GRUB asks for the passphrase, the initramfs does not ask again
+  dd if=/dev/urandom of="$MNT/crypto_keyfile.bin" bs=512 count=4 status=none && chmod 000 "$MNT/crypto_keyfile.bin" || die "keyfile creation failed"
+  printf %s "$LUKSPASS" | cryptsetup luksAddKey "$RAWROOT" "$MNT/crypto_keyfile.bin" - || die "cryptsetup luksAddKey failed"
+  LUKS_UUID=$(blkid -s UUID -o value "$RAWROOT")
+fi
 
 # ---------- remove live-session bits ----------
 info "Removing live-session configuration"
@@ -224,10 +261,10 @@ ALL_kver="/boot/vmlinuz-linux"
 PRESETS=('default')
 default_image="/boot/initramfs-linux.img"
 EOF
-cat > "$MNT/etc/mkinitcpio.conf.d/sunshine.conf" <<'EOF'
-HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)
-EOF
+{ echo 'HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block encrypt filesystems fsck)'
+  [ "$ENCRYPT" = yes ] && echo 'FILES=(/crypto_keyfile.bin)'; } > "$MNT/etc/mkinitcpio.conf.d/sunshine.conf"
 
+/usr/local/bin/sunshine-snapshots-setup "$MNT" || true   # btrfs only: snapper, snapshot boot entries (after the initramfs config exists)
 cat > "$MNT/root/.sunshine-chroot.sh" <<EOS
 set -e
 locale-gen
@@ -241,6 +278,7 @@ sed -i 's/^# \(%wheel ALL=(ALL:ALL) ALL\)/\1/' /etc/sudoers
 mkinitcpio -k "$KVER" -g /boot/initramfs-linux.img
 systemctl enable NetworkManager.service sddm.service bluetooth.service cups.socket power-profiles-daemon.service systemd-timesyncd.service systemd-resolved.service fstrim.timer >/dev/null 2>&1
 systemctl set-default graphical.target
+/usr/local/bin/sunshine-identity apply --quiet
 sed -i 's/^#\?GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Sunshine OS"/' /etc/default/grub
 sed -i '/^#\?GRUB_THEME=/d;/^#\?GRUB_GFXMODE=/d;/^#\?GRUB_TERMINAL_OUTPUT=/d' /etc/default/grub
 printf '%s\n' 'GRUB_THEME="/usr/share/grub/themes/sunshine/theme.txt"' 'GRUB_GFXMODE=1920x1080,1366x768,auto' 'GRUB_TERMINAL_OUTPUT=gfxterm' 'GRUB_DISABLE_BOOTNEXT=true' >> /etc/default/grub
@@ -251,6 +289,12 @@ cat >> "$MNT/root/.sunshine-chroot.sh" <<'EOS'
 chpasswd < /root/.sunshine-cred
 shred -u /root/.sunshine-cred
 EOS
+if [ "$ENCRYPT" = yes ]; then
+  cat >> "$MNT/root/.sunshine-chroot.sh" <<EOS
+sed -i '/^#\?GRUB_ENABLE_CRYPTODISK=/d;/^GRUB_CMDLINE_LINUX=/d' /etc/default/grub
+printf '%s\n' 'GRUB_ENABLE_CRYPTODISK=y' 'GRUB_CMDLINE_LINUX="cryptdevice=UUID=$LUKS_UUID:cryptroot root=/dev/mapper/cryptroot cryptkey=rootfs:/crypto_keyfile.bin"' >> /etc/default/grub
+EOS
+fi
 if [ "$BOOT" = uefi ]; then
   cat >> "$MNT/root/.sunshine-chroot.sh" <<'EOS'
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=SunshineOS --recheck || echo "NVRAM entry failed (continuing with removable path)"

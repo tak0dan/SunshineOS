@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Sunshine OS system information (for support: paste this output when asking for help).
+. /etc/os-release
+Y=$'\e[38;5;220m'; B=$'\e[1m'; N=$'\e[0m'
+row() { printf '%s%-12s%s %s\n' "$Y" "$1" "$N" "$2"; }
+printf '%s☀ Sunshine OS%s\n' "$Y$B" "$N"
+row "System"   "$PRETTY_NAME ($ID, based on ${ID_LIKE:-?}, $BUILD_ID)"
+row "Identity" "$(/usr/local/bin/sunshine-identity check --quiet && echo intact || echo 'CHANGED (run sunshine-doctor --fix)')"
+row "Kernel"   "$(uname -r)"
+row "Boot"     "$([ -d /sys/firmware/efi ] && echo UEFI || echo BIOS), $(findmnt -no FSTYPE / ) root"
+row "Session"  "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-none (text console / ssh)}} ${XDG_SESSION_TYPE:+($XDG_SESSION_TYPE)}"
+row "Shell"    "$(basename "${SHELL:-?}")"
+row "Packages" "$(pacman -Qq 2>/dev/null | wc -l) installed, $(pacman -Qqm 2>/dev/null | wc -l) from AUR/other"
+if [ "$(findmnt -no FSTYPE /)" = btrfs ] && [ -e /etc/snapper/configs/root ]; then
+  n=$(sudo -n snapper -c root list --columns number 2>/dev/null | grep -c '^ *[1-9]'); row "Snapshots" "${n:-?} restore point(s) (sunshine-snapshot list)"
+else row "Snapshots" "not available (needs btrfs)"; fi
+row "Last update" "$(grep -a 'starting full system upgrade' /var/log/pacman.log 2>/dev/null | tail -1 | sed 's/^\[\([^]]*\)\].*/\1/')"
+echo
+command -v inxi >/dev/null && inxi -Fzx --no-host

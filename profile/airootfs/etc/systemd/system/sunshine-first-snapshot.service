@@ -1,0 +1,16 @@
+[Unit]
+Description=Sunshine OS: first restore point
+ConditionPathExists=/etc/snapper/configs/root
+ConditionPathExists=!/var/lib/sunshine/first-snapshot
+ConditionPathExists=!/run/archiso
+After=local-fs.target
+Before=grub-btrfsd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/snapper -c root create -d "Fresh install"
+ExecStartPost=/usr/bin/mkdir -p /var/lib/sunshine
+ExecStartPost=/usr/bin/touch /var/lib/sunshine/first-snapshot
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Repair the package manager: stale lock, broken keyring, stale mirrors, damaged databases.
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+Y=$'\e[38;5;220m'; G=$'\e[32m'; R=$'\e[31m'; B=$'\e[1m'; N=$'\e[0m'
+sec() { printf '\n%s☀ %s%s\n' "$Y$B" "$*" "$N"; }
+sec "Lock file"
+if [ -e /var/lib/pacman/db.lck ]; then
+  if pgrep -x pacman >/dev/null; then echo "${R}pacman is running right now; close it first.${N}"; exit 1; fi
+  rm -f /var/lib/pacman/db.lck && echo "stale lock removed"
+else echo "no lock"; fi
+sec "Keyring"
+pacman-key --init >/dev/null 2>&1; pacman-key --populate archlinux >/dev/null 2>&1 && echo "keyring populated"
+sec "Mirrors"
+if command -v reflector >/dev/null; then
+  cp -n /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.sunshine-backup
+  reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist 2>&1 | tail -2 && echo "fastest mirrors selected"
+else echo "reflector is not installed: keeping the current mirror list"; fi
+sec "Databases and keyring package"
+pacman -Syy --noconfirm 2>&1 | tail -3
+pacman -S --needed --noconfirm archlinux-keyring 2>&1 | tail -2
+pacman -Dk && echo "${G}package database is consistent${N}"
+printf '\n%sDone. Try the update again.%s\n' "$G$B" "$N"

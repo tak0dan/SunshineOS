@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Keeps the system identity (os-release, lsb-release, issue, motd) Sunshine OS. A plain Arch update of the
+# "filesystem" or "lsb-release" package would turn it back into "Arch Linux"; a pacman hook calls this afterwards.
+# usage: sunshine-identity check|apply [--quiet]
+SRC=/usr/share/sunshine/identity
+mode=${1:-check}; quiet=0; [ "${2:-}" = --quiet ] && quiet=1
+say() { [ "$quiet" = 1 ] || echo "$*"; }
+drift=0
+chk() { # chk <wanted file> <installed path>
+  if [ -e "$2" ] && cmp -s "$1" "$2"; then return 0; fi
+  drift=$((drift+1)); say "  differs: $2"; }
+case "$mode" in
+  check)
+    chk $SRC/os-release /usr/lib/os-release
+    [ "$(readlink -f /etc/os-release)" = "$(readlink -f /usr/lib/os-release)" ] || { drift=$((drift+1)); say "  /etc/os-release is not the link to /usr/lib/os-release"; }
+    chk $SRC/lsb-release /etc/lsb-release; chk $SRC/issue /etc/issue; chk $SRC/motd /etc/motd
+    [ $drift -eq 0 ] && say "Identity OK: $(. /etc/os-release; echo "$PRETTY_NAME")"
+    exit $((drift>0)) ;;
+  apply)
+    [ "$(id -u)" -eq 0 ] || { echo "run as root (sudo sunshine-identity apply)"; exit 1; }
+    install -Dm644 $SRC/os-release /usr/lib/os-release
+    ln -sf ../usr/lib/os-release /etc/os-release
+    install -Dm644 $SRC/lsb-release /etc/lsb-release
+    install -Dm644 $SRC/issue /etc/issue
+    install -Dm644 $SRC/motd /etc/motd
+    say "Identity restored: Sunshine OS" ;;
+  *) echo "usage: sunshine-identity check|apply [--quiet]"; exit 2 ;;
+esac

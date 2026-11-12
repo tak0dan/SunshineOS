@@ -89,3 +89,24 @@ open(os.path.join(cfg, "fastfetch/custom-info.json"), "w").write('''{
 }
 ''')
 print("edits applied")
+
+# 8. ls with icons: lsd (Nerd Font icons) instead of eza, in end-4's fish config
+sub(os.path.join(cfg, "fish/config.fish"), "alias ls 'eza --icons=auto'", "alias ls 'lsd --group-dirs first'")
+
+# 9. Konsole gets the same wallpaper colours as kitty and foot (same generated palette, written as a Konsole colour scheme)
+ac = os.path.join(QS, "scripts/colors/applycolor.sh")
+sub(ac, "apply_term() {\n", '''apply_konsole() {
+  local src="$STATE_DIR/user/generated/terminal/kitty-theme.conf"
+  local dst="${XDG_DATA_HOME:-$HOME/.local/share}/konsole/Sunshine.colorscheme"
+  [ -f "$src" ] || return
+  mkdir -p "$(dirname "$dst")"
+  awk 'function rgb(h){ h=substr(h,2); return sprintf("%d,%d,%d", strtonum("0x" substr(h,1,2)), strtonum("0x" substr(h,3,2)), strtonum("0x" substr(h,5,2))) }
+    $1=="background"{bg=rgb($2)} $1=="foreground"{fg=rgb($2)} $1 ~ /^color[0-9]+$/ { n=substr($1,6)+0; if (n<16) c[n]=rgb($2) }
+    END{ print "[General]\\nDescription=Sunshine\\nOpacity=0.92\\nWallpaper=\\n";
+         print "[Background]\\nColor=" bg "\\n\\n[BackgroundIntense]\\nColor=" bg "\\n\\n[Foreground]\\nColor=" fg "\\n\\n[ForegroundIntense]\\nColor=" fg "\\n";
+         for (i=0;i<8;i++) { print "[Color" i "]\\nColor=" c[i] "\\n\\n[Color" i "Intense]\\nColor=" c[i+8] "\\n" } }' "$src" > "$dst.tmp" && mv -f "$dst.tmp" "$dst"
+}
+
+apply_term() {
+  apply_konsole &
+''')

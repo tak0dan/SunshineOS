@@ -42,7 +42,7 @@ Rectangle {
             border.color: pass.activeFocus ? root.gold : "#80ffc98a"; border.width: 1
             TextInput { id: pass; anchors.fill: parent; anchors.margins: 10; verticalAlignment: TextInput.AlignVCenter
                 horizontalAlignment: TextInput.AlignHCenter; color: root.ink; font.pixelSize: 16; clip: true
-                echoMode: TextInput.Password; passwordCharacter: "•"; focus: true
+                echoMode: TextInput.Password; passwordCharacter: "*"; focus: true
                 KeyNavigation.backtab: user
                 Keys.onReturnPressed: sddm.login(user.text, pass.text, root.sessionIndex)
                 Keys.onEnterPressed: sddm.login(user.text, pass.text, root.sessionIndex) }
@@ -55,15 +55,29 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "Log in"; color: "#2a1a0e"; font.pixelSize: 16; font.bold: true }
                 MouseArea { id: loginArea; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: sddm.login(user.text, pass.text, root.sessionIndex) } }
-            Rectangle { width: 180; height: 42; radius: 8; color: root.panel; border.color: "#80ffc98a"
-                Text { anchors.centerIn: parent; color: root.ink; font.pixelSize: 14; elide: Text.ElideRight; width: parent.width - 16
-                    horizontalAlignment: Text.AlignHCenter
-                    text: root.sessionName !== "" ? root.sessionName : "Session" }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: { if (sessionModel.count > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.count } } }
+            // Desktop selector: a drop-down list (opens upwards, the row sits at the bottom of the screen)
+            Item { id: sessionBox; width: 180; height: 42; z: 20
+                Rectangle { id: sessionBtn; anchors.fill: parent; radius: 8; color: root.panel
+                    border.color: sessionList.visible ? root.gold : "#80ffc98a"
+                    Text { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 14
+                        anchors.right: arrow.left; color: root.ink; font.pixelSize: 14; elide: Text.ElideRight
+                        text: root.sessionName !== "" ? root.sessionName : "Session" }
+                    Text { id: arrow; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12
+                        color: root.gold; font.pixelSize: 14; text: sessionList.visible ? "\u25B4" : "\u25BE" }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: sessionList.visible = !sessionList.visible } }
+                Rectangle { id: sessionList; visible: false; z: 30; width: parent.width + 60; x: -30
+                    anchors.bottom: sessionBtn.top; anchors.bottomMargin: 6
+                    height: Math.max(1, sessionModel.count) * 40 + 8; radius: 8; color: "#f00f1522"; border.color: root.gold
+                    Column { anchors.fill: parent; anchors.margins: 4
+                        Repeater { model: sessionModel
+                            delegate: Rectangle { width: sessionList.width - 8; height: 40; radius: 6
+                                color: rowArea.containsMouse ? "#ff9e3d" : (index === root.sessionIndex ? "#40ffc98a" : "transparent")
+                                Text { anchors.centerIn: parent; color: rowArea.containsMouse ? "#2a1a0e" : root.ink; font.pixelSize: 14; text: model.name }
+                                MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: { root.sessionIndex = index; sessionList.visible = false } } } } } } }
         }
         Text { anchors.horizontalCenter: parent.horizontalCenter; color: "#a0fdf0dc"; font.pixelSize: 12
-            text: "Click the session button to switch between Hyprland and Plasma" }
+            text: "Pick the desktop from the list: Sunshine (Hyprland) or Plasma" }
     }
 
     // First boot has no "last user": pre-fill the first account so only the password is needed.

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Installer step: when the system is encrypted (Calamares made /crypto_keyfile.bin), put the key file into the initramfs and
+# tell the kernel where it is, so the passphrase is asked once (by GRUB) and not a second time by the initramfs.
+ROOT=${1:?target root}
+[ -f "$ROOT/crypto_keyfile.bin" ] || { echo "crypt: system is not encrypted (nothing to do)"; exit 0; }
+chmod 000 "$ROOT/crypto_keyfile.bin"
+c="$ROOT/etc/mkinitcpio.conf.d/sunshine.conf"
+grep -q '^FILES=' "$c" 2>/dev/null || echo 'FILES=(/crypto_keyfile.bin)' >> "$c"
+g="$ROOT/etc/default/grub"
+sed -i '/^GRUB_CMDLINE_LINUX=/d;/^#\?GRUB_ENABLE_CRYPTODISK=/d' "$g"
+printf '%s\n' 'GRUB_ENABLE_CRYPTODISK=y' 'GRUB_CMDLINE_LINUX="cryptkey=rootfs:/crypto_keyfile.bin"' >> "$g"
+echo "crypt: key file wired into initramfs and GRUB"

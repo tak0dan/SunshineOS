@@ -51,18 +51,23 @@ CH groupadd -f i2c; CH groupadd -f input
 # dconf defaults (dark mode, GTK theme) are compiled into the system database
 CH dconf update >/dev/null 2>&1 || true
 
+# fastfetch with the native Sunshine / Sunshine_OS logos (patch on top of the installed version; never fails the install)
+CH /usr/local/bin/sunshine-fastfetch-patch || true
+
 # 3. essential pieces missing? keep Plasma as the default session
 essential=(hyprland quickshell matugen foot)
 broken=0
 for e in "${essential[@]}"; do CH pacman -Q "$e" >/dev/null 2>&1 || broken=1; done
 if [ $broken = 1 ]; then
   echo "Hyprland could not be fully installed: the system keeps Plasma as its default session."
-  rm -f "$ROOT/var/lib/sddm/state.conf" "$ROOT/usr/share/wayland-sessions/sunshine-hyprland.desktop"
-  printf '[Last]\nSession=/usr/share/wayland-sessions/plasma.desktop\n' > "$ROOT/var/lib/sddm/state.conf"
+  rm -f "$ROOT/var/lib/sddm/state.conf" "$ROOT/usr/share/sunshine/wayland-sessions/sunshine-hyprland.desktop"
+  printf '[Last]\nSession=/usr/share/sunshine/wayland-sessions/plasma.desktop\n' > "$ROOT/var/lib/sddm/state.conf"
   mkdir -p "$ROOT/var/lib/sunshine"; echo "${fails[*]}" > "$ROOT/var/lib/sunshine/hyprland-failed"
   # a Plasma-only home: drop the Hyprland dotfiles from the skeleton
   rm -rf "$ROOT/etc/skel/.config/hypr" "$ROOT/etc/skel/.config/quickshell"
 fi
+# keep the tested icon font package: sunshine-doctor --fix can reinstall it if an update replaces it
+mkdir -p "$ROOT/usr/share/sunshine/pkgs"; cp -f "$ROOT$PAY"/repo/ttf-material-symbols-variable-git-*.pkg.tar.zst "$ROOT/usr/share/sunshine/pkgs/" 2>/dev/null
 # the payload is only needed during installation: free the space on the target
 rm -rf "$ROOT$PAY" 2>/dev/null
 echo "== done"

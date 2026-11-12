@@ -79,6 +79,19 @@ index 39a526b..949edb9 100644
        "mode": "combined"
      }
    ]
+diff --git a/dots/.config/fish/config.fish b/dots/.config/fish/config.fish
+index be18b17..4a84d57 100755
+--- a/dots/.config/fish/config.fish
++++ b/dots/.config/fish/config.fish
+@@ -34,7 +34,7 @@ if status is-interactive
+     alias pamcan pacman
+     alias q 'qs -c ii'
+     if test "$TERM" != "linux"
+-        alias ls 'eza --icons=auto'
++        alias ls 'lsd --group-dirs first'
+     end
+     if test "$TERM" = "xterm-kitty"
+         alias ssh 'kitten ssh'
 diff --git a/dots/.config/hypr/hyprland/env.lua b/dots/.config/hypr/hyprland/env.lua
 index 9e40a4e..a3dc1ca 100644
 --- a/dots/.config/hypr/hyprland/env.lua
@@ -50146,6 +50159,31 @@ index 5fcd1bb..fcae572 100644
                  property bool showBackground: true
                  property bool verbose: true
                  property bool vertical: false
+diff --git a/dots/.config/quickshell/ii/scripts/colors/applycolor.sh b/dots/.config/quickshell/ii/scripts/colors/applycolor.sh
+index a215c5a..c031f22 100755
+--- a/dots/.config/quickshell/ii/scripts/colors/applycolor.sh
++++ b/dots/.config/quickshell/ii/scripts/colors/applycolor.sh
+@@ -73,7 +73,20 @@ apply_anyterm() {
+   done
+ }
+ 
++apply_konsole() {
++  local src="$STATE_DIR/user/generated/terminal/kitty-theme.conf"
++  local dst="${XDG_DATA_HOME:-$HOME/.local/share}/konsole/Sunshine.colorscheme"
++  [ -f "$src" ] || return
++  mkdir -p "$(dirname "$dst")"
++  awk 'function rgb(h){ h=substr(h,2); return sprintf("%d,%d,%d", strtonum("0x" substr(h,1,2)), strtonum("0x" substr(h,3,2)), strtonum("0x" substr(h,5,2))) }
++    $1=="background"{bg=rgb($2)} $1=="foreground"{fg=rgb($2)} $1 ~ /^color[0-9]+$/ { n=substr($1,6)+0; if (n<16) c[n]=rgb($2) }
++    END{ print "[General]\nDescription=Sunshine\nOpacity=0.92\nWallpaper=\n";
++         print "[Background]\nColor=" bg "\n\n[BackgroundIntense]\nColor=" bg "\n\n[Foreground]\nColor=" fg "\n\n[ForegroundIntense]\nColor=" fg "\n";
++         for (i=0;i<8;i++) { print "[Color" i "]\nColor=" c[i] "\n\n[Color" i "Intense]\nColor=" c[i+8] "\n" } }' "$src" > "$dst.tmp" && mv -f "$dst.tmp" "$dst"
++}
++
+ apply_term() {
++  apply_konsole &
+   apply_anyterm &
+   apply_kitty &
+ }
 diff --git a/dots/.config/quickshell/ii/services/FirstRunExperience.qml b/dots/.config/quickshell/ii/services/FirstRunExperience.qml
 index f23cce5..236b204 100644
 --- a/dots/.config/quickshell/ii/services/FirstRunExperience.qml
@@ -50161,10 +50199,10 @@ index f23cce5..236b204 100644
 diff --git a/dots/.config/starship.toml b/dots/.config/starship.toml
 old mode 100755
 new mode 100644
-index 32bdd20..20bea49
+index 32bdd20..38ff655
 --- a/dots/.config/starship.toml
 +++ b/dots/.config/starship.toml
-@@ -1,103 +1,192 @@
+@@ -1,103 +1,156 @@
 -# Don't print a new line at the start of the prompt
 -add_newline = false
 -# Pipes ╰─ ╭─
@@ -50176,67 +50214,47 @@ index 32bdd20..20bea49
 -# format = """
 -# $directory $fill $git_branch $cmd_duration
 -#  $character"""
-+# Sunshine OS prompt: warm pastel-orange pills, everything a power user wants at a glance.
-+#  line 1: user@host (ssh/root only) | directory | git | languages | duration | clock
-+#  line 2: exit status of the last command, background jobs, then the prompt arrow
++# Sunshine OS prompt: dark rounded pills with warm orange text (SunshineOS colours)
++#  line 1: OS | directory | git | languages ........................ duration | clock
++#  line 2: exit status, background jobs, sudo, then the prompt arrow
 +"$schema" = 'https://starship.rs/config-schema.json'
 +add_newline = true
 +command_timeout = 800
++palette = 'sunshine'
 +
  format = """
 -$cmd_duration $directory$git_branch
 -  $character"""
-+[╭─](#ffb86b)\
-+$os\
-+$username\
-+$hostname\
-+$directory\
-+$git_branch\
-+$git_status\
-+$git_state\
-+$python\
-+$nodejs\
-+$rust\
-+$golang\
-+$java\
-+$docker_context\
-+$nix_shell\
-+$package\
-+$fill\
-+$cmd_duration\
-+$memory_usage\
-+$battery\
-+$time
-+[╰─](#ffb86b)$status$jobs$sudo$character"""
-+
-+palette = 'sunshine'
++$os$username$hostname$directory$git_branch$git_status$git_state$python$nodejs$rust$golang$java$docker_context$nix_shell$package\
++$fill$cmd_duration$memory_usage$battery$time
++$status$jobs$sudo$character"""
 +
 +[palettes.sunshine]
-+flame    = '#ff9e3d'   # bright
-+apricot  = '#ffb86b'
-+peach    = '#ffcba0'
-+cream    = '#ffe8c2'
-+rose     = '#ff8f7a'   # errors
-+ink      = '#2a1a0e'   # dark text on the pills
++pill    = '#262f47'   # pill background (dark navy)
++flame   = '#ff9e3d'   # bright orange
++apricot = '#ffb86b'
++peach   = '#ffcba0'
++cream   = '#ffe8c2'
++gold    = '#ffc43d'
++rose    = '#ff8f7a'   # errors
 +
 +[os]
 +disabled = false
-+format = '[](fg:flame)[ $symbol ]($style)[](fg:flame bg:apricot)'
-+style = 'bg:flame fg:ink bold'
++format = '[](fg:pill)[ $symbol ](bg:pill fg:cream)[](fg:pill) '
 +[os.symbols]
 +Arch = '󰣇'
-+Linux = ''
-+EndeavourOS = ''
-+Unknown = ''
++Linux = ''
++EndeavourOS = ''
++Unknown = '󰖙'   # sun: starship does not know ID=sunshineos yet
  
 -[fill]
 -symbol = '-'
 -style = 'fg:245'
 +[username]
 +show_always = false
-+format = '[ $user]($style)'
-+style_user = 'bg:apricot fg:ink'
-+style_root = 'bg:rose fg:ink bold'
++format = '[](fg:pill)[ $user ](bg:pill fg:peach)[](fg:pill) '
++style_user = 'peach'
++style_root = 'rose'
  
 -# Replace the "❯" symbol in the prompt with "➜"
 -[character]                            # The name of the module we are configuring is "character"
@@ -50244,27 +50262,25 @@ index 32bdd20..20bea49
 -error_symbol = "[ ](bold fg:244)"
 +[hostname]
 +ssh_only = true
-+format = '[@$hostname ]($style)'
-+style = 'bg:apricot fg:ink'
++format = '[](fg:pill)[ @$hostname ](bg:pill fg:peach)[](fg:pill) '
  
 -# Disable the package module, hiding it from the prompt completely
 -[package]
 -disabled = true
 +[directory]
-+format = '[ $path[$read_only]($read_only_style) ]($style)[](fg:apricot bg:peach)'
-+style = 'bg:apricot fg:ink bold'
++format = '[](fg:pill)[ $path[$read_only]($read_only_style) ](bg:pill fg:apricot)[](fg:pill) '
 +read_only = ' 󰌾'
-+read_only_style = 'bg:apricot fg:rose'
-+truncation_length = 4
++read_only_style = 'bg:pill fg:rose'
++truncation_length = 3
 +truncation_symbol = '…/'
 +truncate_to_repo = true
 +[directory.substitutions]
 +Documents = '󰈙 '
-+Downloads = ' '
++Downloads = ' '
 +Music = '󰝚 '
-+Pictures = ' '
-+Videos = ' '
-+Projects = '󰲋 '
++Pictures = ' '
++Videos = ' '
++Projects = '󰣋 '
  
  [git_branch]
 -style = "bg: 252"
@@ -50272,20 +50288,18 @@ index 32bdd20..20bea49
 -truncation_length = 12
 -truncation_symbol = ""
 -format = " 󰜥 [](bold fg:252)[$symbol $branch(:$remote_branch)](fg:235 bg:252)[ ](bold fg:252)"
-+symbol = ''
-+format = '[ $symbol $branch]($style)'
-+style = 'bg:peach fg:ink'
++symbol = ''
++format = '[](fg:pill)[ $symbol $branch ](bg:pill fg:flame)[](fg:pill) '
  
 -[git_commit]
 -commit_hash_length = 4
 -tag_symbol = " "
 +[git_status]
-+format = '[ $all_status$ahead_behind ]($style)[](fg:peach)'
-+style = 'bg:peach fg:ink'
++format = '[](fg:pill)[ $all_status$ahead_behind ](bg:pill fg:rose)[](fg:pill) '
 +conflicted = '⚔${count} '
 +ahead = '⇡${count} '
 +behind = '⇣${count} '
-+diverged = '⇕⇡${ahead_count}⇣${behind_count} '
++diverged = '↕'
 +untracked = '?${count} '
 +stashed = '≡${count} '
 +modified = '!${count} '
@@ -50308,39 +50322,30 @@ index 32bdd20..20bea49
 -staged = '[++\($count\)](green)'
 -renamed = " ✍️ "
 -deleted = " 🗑 "
-+format = '[ \($state( $progress_current/$progress_total)\)]($style)'
-+style = 'fg:flame'
++format = '[](fg:pill)[ \($state( $progress_current/$progress_total)\) ](bg:pill fg:gold)[](fg:pill) '
 +
 +[python]
-+format = '[ ${symbol}${pyenv_prefix}(${version})(\($virtualenv\)) ]($style)'
-+symbol = ' '
-+style = 'fg:peach'
++format = '[](fg:pill)[ ${symbol}${pyenv_prefix}(${version})(\($virtualenv\)) ](bg:pill fg:peach)[](fg:pill) '
++symbol = ' '
 +[nodejs]
-+format = '[ $symbol($version) ]($style)'
-+symbol = ' '
-+style = 'fg:peach'
++format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
++symbol = ' '
 +[rust]
-+format = '[ $symbol($version) ]($style)'
-+symbol = ' '
-+style = 'fg:peach'
++format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
++symbol = ' '
 +[golang]
-+format = '[ $symbol($version) ]($style)'
-+symbol = ' '
-+style = 'fg:peach'
++format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
++symbol = ' '
 +[java]
-+format = '[ $symbol($version) ]($style)'
-+symbol = ' '
-+style = 'fg:peach'
++format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
++symbol = ' '
 +[docker_context]
-+format = '[ $symbol$context ]($style)'
-+symbol = ' '
-+style = 'fg:peach'
++format = '[](fg:pill)[ $symbol$context ](bg:pill fg:peach)[](fg:pill) '
++symbol = ' '
 +[nix_shell]
-+format = '[ $symbol$state ]($style)'
-+style = 'fg:peach'
++format = '[](fg:pill)[ $symbol$state ](bg:pill fg:peach)[](fg:pill) '
 +[package]
-+format = '[ 󰏗 $version ]($style)'
-+style = 'fg:cream'
++format = '[](fg:pill)[ 󰏗 $version ](bg:pill fg:cream)[](fg:pill) '
  
 -[hostname]
 -ssh_only = false
@@ -50355,8 +50360,7 @@ index 32bdd20..20bea49
 +[cmd_duration]
 +min_time = 500
 +show_milliseconds = false
-+format = '[ 󱦟 $duration ]($style)'
-+style = 'fg:flame'
++format = '[](fg:pill)[ 󱧟 $duration ](bg:pill fg:flame)[](fg:pill) '
  
  [memory_usage]
 -disabled = true
@@ -50365,28 +50369,26 @@ index 32bdd20..20bea49
 -style = "bold dimmed green"
 +disabled = false
 +threshold = 70
-+format = '[ 󰍛 $ram_pct ]($style)'
-+style = 'fg:rose'
++format = '[](fg:pill)[ 󰍛 $ram_pct ](bg:pill fg:rose)[](fg:pill) '
 +
 +[battery]
-+format = '[ $symbol$percentage ]($style)'
++format = '[](fg:pill)[ $symbol$percentage ](bg:pill fg:peach)[](fg:pill) '
 +full_symbol = '󰁹'
 +charging_symbol = '󰂄'
 +discharging_symbol = '󰁿'
 +[[battery.display]]
 +threshold = 30
-+style = 'fg:rose'
++style = 'rose'
 +[[battery.display]]
 +threshold = 100
-+style = 'fg:peach'
++style = 'peach'
  
  [time]
  disabled = false
 -format = '🕙[\[ $time \]]($style) '
 -time_format = "%T"
-+time_format = '%H:%M:%S'
-+format = '[](fg:apricot)[ 󰥔 $time ]($style)[](fg:apricot)'
-+style = 'bg:apricot fg:ink bold'
++time_format = '%H:%M'
++format = '[](fg:pill)[ 󰥔 $time ](bg:pill fg:apricot)[](fg:pill)'
  
 -[username]
 -style_user = "bold bg:252 fg:235"
@@ -50417,7 +50419,7 @@ index 32bdd20..20bea49
 +symbol = '✘ '
 +success_symbol = ''
 +not_found_symbol = '? '
-+sigint_symbol = '󰜺 '
++sigint_symbol = '󰜹 '
 +signal_symbol = '⚡'
 +style = 'fg:rose bold'
 +map_symbol = true
@@ -50438,6 +50440,6 @@ index 32bdd20..20bea49
 -min_time = 0
 -format = '[](bold fg:252)[󰪢 $duration](bold bg:252 fg:235)[](bold fg:252)'
 +[character]
-+success_symbol = '[❯](bold fg:flame)'
++success_symbol = '[❯](bold fg:gold)'
 +error_symbol = '[❯](bold fg:rose)'
 +vimcmd_symbol = '[❮](bold fg:apricot)'

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Switch the terminal prompt style: sunshine-prompt tokyo | pastel   (both in Sunshine colours)
+D="${XDG_CONFIG_HOME:-$HOME/.config}"
+case "${1:-}" in
+  tokyo|pastel) cp "$D/sunshine/prompts/$1.toml" "$D/starship.toml" && echo "Prompt style: $1 (open a new terminal)";;
+  *) echo "usage: sunshine-prompt tokyo|pastel"; exit 2;;
+esac

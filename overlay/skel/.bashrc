@@ -19,5 +19,5 @@ else
 fi
 command -v bat >/dev/null && alias cat='bat --paging=never --style=plain'
 alias update='sunshine-update'; alias store='sunshine-store'
-alias install='sudo pacman -S'; alias remove='sudo pacman -Rns'; alias search='pacman -Ss'; alias aur='yay -S'
+alias install='sudo pacman -S'; alias remove='sudo pacman -Rns'; alias search='pacman -Ss'; alias aur='paru -S'
 alias ..='cd ..'; alias ...='cd ../..'; alias grep='grep --color=auto'

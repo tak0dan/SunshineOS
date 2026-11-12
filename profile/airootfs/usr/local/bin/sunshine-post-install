@@ -15,6 +15,7 @@ rm -rf etc/systemd/system/pacman-init.service.d etc/systemd/system/getty@tty1.se
 userdel -r sunshine 2>/dev/null; getent group sunshine >/dev/null && groupdel sunshine 2>/dev/null
 rm -rf /home/sunshine
 echo "Sunshine OS" > etc/motd
+/usr/local/bin/sunshine-identity apply --quiet 2>/dev/null
 # GRUB look: Sunshine theme (gray, charcoal, pastel orange); /boot is read by GRUB, so no btrfs compression there (see mount.conf)
 if [ -f etc/default/grub ]; then
   sed -i '/^#\?GRUB_THEME=/d;/^#\?GRUB_GFXMODE=/d;/^#\?GRUB_TERMINAL_OUTPUT=/d' etc/default/grub
@@ -34,6 +35,6 @@ ALL_kver="/boot/vmlinuz-linux"
 PRESETS=('default')
 default_image="/boot/initramfs-linux.img"
 EOP
-echo 'HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)' > etc/mkinitcpio.conf.d/sunshine.conf
+echo 'HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block encrypt filesystems fsck)' > etc/mkinitcpio.conf.d/sunshine.conf
 pacman-key --init >/dev/null 2>&1 && pacman-key --populate archlinux >/dev/null 2>&1
 exit 0

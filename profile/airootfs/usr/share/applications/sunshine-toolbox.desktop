@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Toolbox
+Comment=Maintenance, repair and restore tools
+Exec=sunshine-toolbox
+Icon=/usr/share/sunshine/logos/welcome.png
+Categories=System;Settings;
+Terminal=false
