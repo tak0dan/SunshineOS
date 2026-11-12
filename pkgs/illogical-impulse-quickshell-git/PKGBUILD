@@ -27,7 +27,8 @@ depends=(
   'wayland'
   # NOTE: Below are custom dependencies of illogical-impulse
   qt6-5compat 
-  qt6-avif-image-plugin
+  kimageformats
+  libavif
   qt6-imageformats
   qt6-multimedia
   qt6-positioning

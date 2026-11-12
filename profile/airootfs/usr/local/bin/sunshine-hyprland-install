@@ -67,7 +67,7 @@ if [ $broken = 1 ]; then
   rm -rf "$ROOT/etc/skel/.config/hypr" "$ROOT/etc/skel/.config/quickshell"
 fi
 # keep the tested icon font package: sunshine-doctor --fix can reinstall it if an update replaces it
-mkdir -p "$ROOT/usr/share/sunshine/pkgs"; cp -f "$ROOT$PAY"/repo/ttf-material-symbols-variable-git-*.pkg.tar.zst "$ROOT/usr/share/sunshine/pkgs/" 2>/dev/null
+mkdir -p "$ROOT/usr/share/sunshine/pkgs"; cp -f "$ROOT$PAY"/repo/ttf-material-symbols-variable-*.pkg.tar.zst "$ROOT/usr/share/sunshine/pkgs/" 2>/dev/null
 # the payload is only needed during installation: free the space on the target
 rm -rf "$ROOT$PAY" 2>/dev/null
 echo "== done"

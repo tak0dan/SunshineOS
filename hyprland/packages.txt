@@ -52,7 +52,7 @@ kvantum-qt5
 nwg-look
 breeze-plus
 darkly-bin
-ttf-material-symbols-variable-git
+ttf-material-symbols-variable
 ttf-readex-pro
 ttf-rubik-vf
 ttf-twemoji

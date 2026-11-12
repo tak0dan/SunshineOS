@@ -34,9 +34,9 @@ if grep -q '^\[sunshine-hypr\]' /etc/pacman.conf 2>/dev/null; then warn "install
 for p in sddm plasma-desktop hyprland snapper; do pacman -Qq $p >/dev/null 2>&1 || warn "expected package not installed: $p"; done
 
 sec "Desktop"
-if pacman -Qq ttf-material-symbols-variable-git >/dev/null 2>&1; then
-  have=$(pacman -Q ttf-material-symbols-variable-git | awk '{print $2}'); keep=$(ls /usr/share/sunshine/pkgs/ttf-material-symbols-variable-git-*.pkg.tar.zst 2>/dev/null | head -1)
-  want=$(basename "${keep:-x}" | sed -E 's/^ttf-material-symbols-variable-git-(.*)-any\.pkg\.tar\.zst$/\1/')
+if pacman -Qq ttf-material-symbols-variable >/dev/null 2>&1; then
+  have=$(pacman -Q ttf-material-symbols-variable | awk '{print $2}'); keep=$(ls /usr/share/sunshine/pkgs/ttf-material-symbols-variable-*.pkg.tar.zst 2>/dev/null | head -1)
+  want=$(basename "${keep:-x}" | sed -E 's/^ttf-material-symbols-variable-(.*)-any\.pkg\.tar\.zst$/\1/')
   if [ -z "$keep" ] || [ "$have" = "$want" ]; then ok "icon font is the tested version ($have)"
   else bad "icon font was replaced by $have (tested: $want): Hyprland icons show as odd letters"
     [ $FIX = 1 ] && pacman -U --noconfirm "$keep" >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1 && fx "tested icon font restored (log out and in again)"; fi

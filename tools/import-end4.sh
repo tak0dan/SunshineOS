@@ -4,6 +4,7 @@
 # Replaces tools/import-dots.sh (the older Waybar based dots).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+SUNSHINE_CACHE_DIR=${SUNSHINE_CACHE:-$PWD/cache}; mkdir -p "$SUNSHINE_CACHE_DIR/pacman"; chmod -R a+rwX "$SUNSHINE_CACHE_DIR/pacman" 2>/dev/null || true
 PIN=2f2a376fdb2ad738bf55f693dd0b474b64bb0ab8
 UP=cache/end4-up; SU=cache/sunshine-end4
 A=profile/airootfs; PAY=$A/usr/share/sunshine/hyprland; SKEL=$PAY/root/etc/skel; QS="$SKEL/.config/quickshell/ii"
@@ -46,7 +47,9 @@ for f in repo/*.pkg.tar.zst; do
   n=$(basename "$f" | sed -E 's/-[^-]+-[^-]+-[^-]+\.pkg\.tar\.zst$//')
   grep -qx "$n" hyprland/packages.txt && cp "$f" "$PAY/repo/"
 done
-docker run --rm -v "$PWD/$PAY/repo:/r" sunshineos-builder bash -c 'cd /r && repo-add sunshine-hypr.db.tar.gz *.pkg.tar.zst >/dev/null 2>&1; chown -R 1000:1000 /r'
+# the icon font is an official package, but the installer keeps a copy of the tested revision (see sunshine-doctor): ship it in the payload repo
+docker run --rm -v "$SUNSHINE_CACHE_DIR/pacman:/var/cache/pacman/pkg" -v "$PWD/$PAY/repo:/r" sunshineos-builder bash -c 'pacman -Sy >/dev/null 2>&1; pacman -Sw --noconfirm --needed ttf-material-symbols-variable && cp /var/cache/pacman/pkg/ttf-material-symbols-variable-*.pkg.tar.zst /r/'
+docker run --rm -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -v "$PWD/$PAY/repo:/r" sunshineos-builder bash -c 'cd /r && repo-add sunshine-hypr.db.tar.gz *.pkg.tar.zst >/dev/null 2>&1; chown -R "$HOST_UID:$HOST_GID" /r'
 echo "payload repo: $(ls "$PAY/repo"/*.pkg.tar.zst | wc -l) packages, $(du -sh "$PAY/repo" | cut -f1)"
 
 # 3. Sunshine identity: wallpapers, logo, then the overlay (fish extras, prompt, mime, ...)

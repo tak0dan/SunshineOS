@@ -5,9 +5,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REQ=$PWD/cache/end4-up/sdata/uv/requirements.txt
 OUT=$PWD/profile/airootfs/usr/share/sunshine/hyprland/root/opt
-CACHE=${SUNSHINE_CACHE:-$HOME/Projects/SunshineOS-cache}
+CACHE=${SUNSHINE_CACHE:-$PWD/cache}
 mkdir -p "$OUT" "$CACHE/pacman" "$CACHE/uv"
-docker run --rm -e UV_CACHE_DIR=/uvcache -v "$CACHE/uv:/uvcache" -v "$CACHE/pacman:/var/cache/pacman/pkg" -v "$REQ:/requirements.txt:ro" -v "$OUT:/out" sunshineos-builder bash -c '
+chmod -R a+rwX "$CACHE/pacman" 2>/dev/null || true
+docker run --rm -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e UV_CACHE_DIR=/uvcache -v "$CACHE/uv:/uvcache" -v "$CACHE/pacman:/var/cache/pacman/pkg" -v "$REQ:/requirements.txt:ro" -v "$OUT:/out" sunshineos-builder bash -c '
   set -e
   pacman -Sy --noconfirm --needed uv clang cairo gobject-introspection pkgconf >/dev/null
   rm -rf /out/uv-python /out/illogical-impulse-venv
@@ -17,5 +18,5 @@ docker run --rm -e UV_CACHE_DIR=/uvcache -v "$CACHE/uv:/uvcache" -v "$CACHE/pacm
   uv pip install -r /requirements.txt
   # the venv is used from /opt inside the ISO, so rewrite the build-time paths
   sed -i "s|/out/|/opt/|g" /out/illogical-impulse-venv/bin/* /out/illogical-impulse-venv/pyvenv.cfg 2>/dev/null || true
-  chown -R 1000:1000 /out'
+  chown -R "$HOST_UID:$HOST_GID" /out /uvcache'
 du -sh "$OUT"/*
