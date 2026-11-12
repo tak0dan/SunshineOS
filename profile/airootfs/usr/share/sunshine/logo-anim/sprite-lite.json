@@ -1,0 +1,19 @@
+{
+ "fps": 20,
+ "frame_w": 80,
+ "frame_h": 80,
+ "cols": 12,
+ "pixel_art": true,
+ "intro": {
+  "file": "sprite-lite.png",
+  "frames": 180,
+  "rows": 15
+ },
+ "loop": {
+  "file": "loop-lite.png",
+  "frames": 200,
+  "rows": 17
+ },
+ "idle_starts_s": 4.4,
+ "loop_period_s": 10.0
+}

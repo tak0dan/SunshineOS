@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Runs inside a terminal window: the Sunshine OS start-up animation, then fastfetch, then your shell (or a command).
+# Needs no shell configuration: sunshine-term starts it as the terminal's program, so it works the same with bash, zsh and fish.
+#   sunshine-session [--no-splash] [--no-fastfetch] [-- command args...]
+# SUNSHINE_NO_SPLASH=1 / SUNSHINE_NO_FASTFETCH=1 switch the parts off from the environment.
+splash=1; ff=1
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-splash) splash=0 ;;
+    --no-fastfetch) ff=0 ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+  shift
+done
+[ -n "${SUNSHINE_NO_SPLASH:-}" ] && splash=0
+[ -n "${SUNSHINE_NO_FASTFETCH:-}" ] && ff=0
+
+here="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+anim=""
+for d in "${SUNSHINE_LOGO_ANIM_DIR:-}" /usr/share/sunshine/logo-anim "$here/../share/sunshine/logo-anim" "$here/../../share/sunshine/logo-anim"; do
+  [ -n "$d" ] && [ -f "$d/play.py" ] && { anim="$d"; break; }
+done
+
+if [ -t 1 ] && [ "$splash" = 1 ] && [ -n "$anim" ] && command -v python3 >/dev/null 2>&1; then
+  python3 "$anim/play.py" --lite --splash 2>/dev/null || true      # no Pillow/numpy or an odd terminal: just carry on
+fi
+if [ -t 1 ] && [ "$ff" = 1 ] && command -v fastfetch >/dev/null 2>&1; then
+  fastfetch
+fi
+
+if [ $# -gt 0 ]; then exec "$@"; fi
+shell="${SHELL:-}"
+[ -x "$shell" ] || shell="$(getent passwd "$(id -un)" | cut -d: -f7)"
+[ -x "$shell" ] || shell=/bin/sh
+exec "$shell"

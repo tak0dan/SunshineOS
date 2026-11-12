@@ -36,3 +36,22 @@ If an AUR dependency disappears upstream, add a replacement to `DEAD_DEP` at the
 - `hyprland/` Hyprland payload sources (installed on the target by the installer)
 - `build.sh`  builds the ISO in a Docker container into `out/`
 - `test/`     QEMU (UEFI + BIOS) boot and install tests using throwaway disks
+
+## Terminal start-up animation
+
+`sunshine-term` starts a terminal emulator (kitty, foot or konsole) that plays the Sunshine OS logo animation, runs
+fastfetch and then drops into your normal shell. It is only a wrapper: no `.bashrc`, `.zshrc` or fish config and no emulator
+is modified, so it works the same with bash, zsh and fish.
+
+```
+sunshine-term                              # first of foot, kitty, konsole (or $TERMINAL / $SUNSHINE_TERMINAL)
+sunshine-term --emulator konsole           # pick one
+sunshine-term --emulator kitty --class foo # everything else goes to the emulator unchanged
+sunshine-term --no-splash --no-fastfetch   # skip parts
+sunshine-term -- htop                      # run something after the animation instead of the shell
+```
+
+`sunshine-session` is the part that runs inside the window. Use `sunshine-term` wherever a terminal is launched (key binding,
+launcher, `$TERMINAL`); "Terminal (Sunshine)" is also in the application menu. The animation (`/usr/share/sunshine/logo-anim`)
+draws through the kitty graphics protocol, sixel (foot, konsole) or half-block characters, and is skipped silently if Python
+with Pillow and numpy is missing.

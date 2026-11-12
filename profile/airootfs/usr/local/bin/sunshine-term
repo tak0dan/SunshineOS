@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Starts a terminal emulator that plays the Sunshine OS start-up animation, then fastfetch, then your shell.
+# A wrapper only: no shell rc file and no emulator is modified. Works with kitty, foot and konsole; other emulators
+# are started with -e.
+#
+#   sunshine-term [--emulator kitty|foot|konsole|<command>] [--no-splash] [--no-fastfetch] [emulator options...] [-- command args...]
+#
+# The emulator is taken from --emulator, then $SUNSHINE_TERMINAL, then $TERMINAL, then the first of foot, kitty, konsole.
+# Everything else before "--" is passed to the emulator untouched; what follows "--" runs after the animation instead of the shell.
+emu="${SUNSHINE_TERMINAL:-}"
+sess_opts=(); opts=(); cmd=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --emulator) emu="$2"; shift ;;
+    --emulator=*) emu="${1#--emulator=}" ;;
+    --no-splash|--no-fastfetch) sess_opts+=("$1") ;;
+    --) shift; cmd=("$@"); break ;;
+    *) opts+=("$1") ;;
+  esac
+  shift
+done
+
+if [ -z "$emu" ] && [ -n "${TERMINAL:-}" ] && [ "$(basename "$TERMINAL")" != sunshine-term ]; then emu="$TERMINAL"; fi
+if [ -z "$emu" ]; then
+  for c in foot kitty konsole; do command -v "$c" >/dev/null 2>&1 && { emu="$c"; break; }; done
+fi
+[ -n "$emu" ] && command -v "$emu" >/dev/null 2>&1 || { echo "sunshine-term: no terminal emulator found (tried foot, kitty, konsole)" >&2; exit 1; }
+
+here="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+session="$here/sunshine-session"; [ -x "$session" ] || session="$(command -v sunshine-session)"
+[ -x "$session" ] || { echo "sunshine-term: sunshine-session not found" >&2; exit 1; }
+
+run=("$session" "${sess_opts[@]}")
+[ ${#cmd[@]} -gt 0 ] && run+=(-- "${cmd[@]}")
+
+case "$(basename "$emu")" in
+  kitty|foot) exec "$emu" "${opts[@]}" "${run[@]}" ;;
+  *)          exec "$emu" "${opts[@]}" -e "${run[@]}" ;;       # konsole and most others
+esac

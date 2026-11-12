@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal (Sunshine)
+GenericName=Terminal Emulator
+Comment=Terminal with the Sunshine OS start-up animation
+Exec=sunshine-term
+Icon=utilities-terminal
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=terminal;console;shell;
