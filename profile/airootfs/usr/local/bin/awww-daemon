@@ -1,0 +1,11 @@
+#!/bin/sh
+# Sunshine OS wrapper (comes before /usr/bin in PATH).
+# On virtual GPUs (QEMU/virgl and similar) awww's default argb wl_shm format draws nothing, so use abgr there.
+# Real hardware keeps awww's default. An explicit --format/-f from the caller is always respected.
+for a in "$@"; do
+  case "$a" in -f|--format|--format=*) exec /usr/bin/awww-daemon "$@";; esac
+done
+if command -v systemd-detect-virt >/dev/null 2>&1 && systemd-detect-virt -q 2>/dev/null; then
+  exec /usr/bin/awww-daemon --format abgr "$@"
+fi
+exec /usr/bin/awww-daemon "$@"

@@ -1,0 +1,6 @@
+[Unit]
+Description=Check for Sunshine OS updates
+ConditionPathExists=!/run/archiso
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sunshine-update-notifier

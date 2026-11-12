@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Welcome
+Comment=Get started, update and restore your system
+Exec=/usr/local/bin/sunshine-welcome
+Icon=sunshine-welcome
+Categories=System;Settings;

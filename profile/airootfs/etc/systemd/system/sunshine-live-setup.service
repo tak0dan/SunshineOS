@@ -1,0 +1,11 @@
+[Unit]
+Description=Prepare the live user's home from /etc/skel
+Before=display-manager.service
+ConditionPathExists=/run/archiso
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sunshine-live-setup
+
+[Install]
+WantedBy=multi-user.target

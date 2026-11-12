@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Installer step (Calamares shellprocess@hyprland, run from the live system, NOT inside the chroot):
+# puts the Sunshine Hyprland desktop onto the freshly unpacked target system.
+#   1. copies the payload files: dotfiles (/etc/skel), session files, Python venv (/opt)
+#   2. installs the Hyprland package list inside the target, one package at a time, 3 tries each, never removing anything
+#      (AUR-built packages come from the offline repo next to the payload, the rest from the mirrors)
+#   3. if the essential packages could not be installed, the target keeps Plasma as its default session
+# usage: sunshine-hyprland-install <target-root>
+set -u
+ROOT=${1:?target root}
+PAY=/usr/share/sunshine/hyprland
+LOGDIR="$ROOT/var/log/sunshine"; mkdir -p "$LOGDIR"
+exec > >(tee -a "$LOGDIR/hyprland-install.log") 2>&1
+echo "== Sunshine Hyprland install into $ROOT ($(date))"
+
+# network inside the chroot: reuse the live system's resolver
+[ -e "$ROOT/etc/resolv.conf" -o -L "$ROOT/etc/resolv.conf" ] && mv "$ROOT/etc/resolv.conf" "$ROOT/etc/resolv.conf.sunshine-bak"
+cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf" 2>/dev/null || echo "nameserver 1.1.1.1" > "$ROOT/etc/resolv.conf"
+restore() { rm -f "$ROOT/etc/resolv.conf" "$ROOT/tmp/pm-hypr.conf"; [ -e "$ROOT/etc/resolv.conf.sunshine-bak" -o -L "$ROOT/etc/resolv.conf.sunshine-bak" ] && mv "$ROOT/etc/resolv.conf.sunshine-bak" "$ROOT/etc/resolv.conf"; }
+trap restore EXIT
+
+# 1. payload files
+rsync -aH --keep-dirlinks "$PAY/root/" "$ROOT/" || echo "WARN: payload copy reported errors"
+
+# 2. packages
+{ cat "$ROOT/etc/pacman.conf"
+  printf '\n[sunshine-hypr]\nSigLevel = Optional TrustAll\nServer = file://%s/repo\n' "$PAY"; } > "$ROOT/tmp/pm-hypr.conf"
+CH() { chroot "$ROOT" "$@"; }
+CH pacman-key --init >/dev/null 2>&1; CH pacman-key --populate archlinux >/dev/null 2>&1
+n=0; fails=()
+mapfile -t PKGS < <(grep -v '^\s*#' "$PAY/packages.txt" | grep -v '^\s*$')
+# Fully automatic: no prompts (--noconfirm) and NO package is ever removed or overwritten to make room (no -R, no --overwrite,
+# no --ask to resolve conflicts). A package that cannot be installed (conflict, missing, broken mirror) is retried up to 3 times
+# and then skipped; the installation always continues.
+PM="pacman --config /tmp/pm-hypr.conf --noconfirm --disable-download-timeout"
+for try in 1 2 3; do CH $PM -Sy >/dev/null 2>&1 && break; sleep 5; done
+for p in "${PKGS[@]}"; do
+  n=$((n+1)); ok=0
+  for try in 1 2 3; do
+    flags="-S --needed"
+    [ $try = 3 ] && flags="-Syy --needed"    # last try: refresh the package databases first (a stale mirror is the usual cause)
+    if CH $PM $flags "$p" >/tmp/sunshine-hypr-pkg.log 2>&1; then ok=1; break; fi
+    echo "[$n/${#PKGS[@]}] $p: attempt $try of 3 failed: $(grep -m1 -i 'error\|conflict' /tmp/sunshine-hypr-pkg.log | cut -c1-110)"; sleep 5
+  done
+  if [ $ok = 1 ]; then echo "[$n/${#PKGS[@]}] $p ok"; else echo "[$n/${#PKGS[@]}] $p SKIPPED after 3 tries"; fails+=("$p"); fi
+done
+echo "failed packages: ${fails[*]:-none}"
+
+# groups end-4 needs (brightness, input devices); the user is added to them by the users step
+CH groupadd -f i2c; CH groupadd -f input
+# dconf defaults (dark mode, GTK theme) are compiled into the system database
+CH dconf update >/dev/null 2>&1 || true
+
+# 3. essential pieces missing? keep Plasma as the default session
+essential=(hyprland quickshell matugen foot)
+broken=0
+for e in "${essential[@]}"; do CH pacman -Q "$e" >/dev/null 2>&1 || broken=1; done
+if [ $broken = 1 ]; then
+  echo "Hyprland could not be fully installed: the system keeps Plasma as its default session."
+  rm -f "$ROOT/var/lib/sddm/state.conf" "$ROOT/usr/share/wayland-sessions/sunshine-hyprland.desktop"
+  printf '[Last]\nSession=/usr/share/wayland-sessions/plasma.desktop\n' > "$ROOT/var/lib/sddm/state.conf"
+  mkdir -p "$ROOT/var/lib/sunshine"; echo "${fails[*]}" > "$ROOT/var/lib/sunshine/hyprland-failed"
+  # a Plasma-only home: drop the Hyprland dotfiles from the skeleton
+  rm -rf "$ROOT/etc/skel/.config/hypr" "$ROOT/etc/skel/.config/quickshell"
+fi
+# the payload is only needed during installation: free the space on the target
+rm -rf "$ROOT$PAY" 2>/dev/null
+echo "== done"
+exit 0

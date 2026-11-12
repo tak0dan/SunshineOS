@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install Sunshine OS
+Comment=Install Sunshine OS to this computer
+Exec=sudo -E /usr/bin/calamares
+Icon=sunshineos
+Terminal=false
+Categories=System;

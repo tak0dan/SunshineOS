@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""Sunshine Welcome: first-run window and everyday helper for Sunshine OS."""
+import os
+import shutil
+import subprocess
+import sys
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QIcon, QPixmap
+from PyQt6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout,
+                             QLabel, QPushButton, QVBoxLayout, QWidget)
+
+LIVE = os.path.exists("/run/archiso")
+CONF_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "sunshine")
+NOSHOW = os.path.join(CONF_DIR, "welcome-disabled")
+
+STYLE = """
+QWidget { background: #1e1b2e; color: #f3eefc; font-size: 14px; }
+QLabel#title { font-size: 26px; font-weight: bold; color: #ffc43d; }
+QLabel#sub { color: #c9c0e0; }
+QPushButton { background: #2d2942; border: 1px solid #443f63; border-radius: 10px; padding: 14px; text-align: left; }
+QPushButton:hover { background: #3a3558; border-color: #ffc43d; }
+QPushButton#primary { background: #ffc43d; color: #1e1b2e; font-weight: bold; border: none; }
+QPushButton#primary:hover { background: #ffd56b; }
+QCheckBox { color: #c9c0e0; }
+QFrame#line { background: #443f63; max-height: 1px; }
+"""
+
+
+def run(cmd):
+    """Start a command detached from the window."""
+    try:
+        subprocess.Popen(cmd, start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        pass
+
+
+def terminal(script, title="Sunshine OS"):
+    run(["konsole", "--hide-menubar", "-p", f"tabtitle={title}", "-e", "bash", "-c", script])
+
+
+class Welcome(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Welcome to Sunshine OS")
+        self.setMinimumSize(640, 560)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(32, 28, 32, 20)
+        outer.setSpacing(14)
+
+        head = QHBoxLayout()
+        head.setSpacing(16)
+        logo = QLabel()
+        pm = QPixmap("/usr/share/sunshine/logos/welcome.png")
+        if not pm.isNull():
+            logo.setPixmap(pm.scaled(72, 72, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            head.addWidget(logo)
+        t = QLabel("Welcome to Sunshine OS")
+        t.setObjectName("title")
+        head.addWidget(t, 1)
+        outer.addLayout(head)
+        self.setWindowIcon(QIcon("/usr/share/sunshine/logos/welcome.png"))
+        s = QLabel("A friendly start. Everything you need is one click away."
+                   if not LIVE else
+                   "You are running the live session. Nothing is changed on your computer until you install.")
+        s.setObjectName("sub")
+        s.setWordWrap(True)
+        outer.addWidget(s)
+        line = QFrame()
+        line.setObjectName("line")
+        outer.addWidget(line)
+
+        grid = QGridLayout()
+        grid.setSpacing(12)
+        items = []
+        if LIVE:
+            b = self.button("💿  Install Sunshine OS\nPut Sunshine OS on this computer", self.install)
+            b.setObjectName("primary")
+            outer.addWidget(b)
+        items += [
+            ("🛍  Get apps\nBrowse and install programs", lambda: run(["sunshine-store"])),
+            ("🔄  Update everything\nSystem, apps and extras", self.update),
+            ("🛟  Restore points\nUndo a bad change (snapshots)", self.snapshots),
+            ("🌐  Enable Flathub\nThousands more apps", self.flathub),
+            ("⚙  Settings\nLook, keyboard, language, network", lambda: run(["systemsettings"])),
+            ("❓  Help && tips\nWhat to do if something is wrong", self.tips),
+        ]
+        for i, (label, fn) in enumerate(items):
+            grid.addWidget(self.button(label, fn), i // 2, i % 2)
+        outer.addLayout(grid)
+        outer.addStretch(1)
+
+        bottom = QHBoxLayout()
+        self.cb = QCheckBox("Show this window at startup")
+        self.cb.setChecked(not os.path.exists(NOSHOW))
+        self.cb.toggled.connect(self.toggle)
+        bottom.addWidget(self.cb)
+        bottom.addStretch(1)
+        close = QPushButton("Close")
+        close.clicked.connect(self.close)
+        bottom.addWidget(close)
+        outer.addLayout(bottom)
+
+    def button(self, text, fn):
+        b = QPushButton(text)
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
+        b.clicked.connect(lambda: fn())
+        return b
+
+    def toggle(self, on):
+        os.makedirs(CONF_DIR, exist_ok=True)
+        if on:
+            try:
+                os.remove(NOSHOW)
+            except FileNotFoundError:
+                pass
+        else:
+            open(NOSHOW, "w").close()
+
+    def install(self):
+        run(["sudo", "-E", "/usr/bin/calamares"]
+            if shutil.which("calamares") else
+            ["konsole", "-e", "sudo", "/usr/local/bin/sunshine-install"])
+
+    def update(self):
+        run(["sunshine-update"])
+
+    def snapshots(self):
+        if shutil.which("timeshift-launcher"):
+            run(["pkexec", "env", f"DISPLAY={os.environ.get('DISPLAY', ':0')}",
+                 f"WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY', '')}",
+                 f"XDG_RUNTIME_DIR={os.environ.get('XDG_RUNTIME_DIR', '')}", "timeshift-launcher"])
+
+    def flathub(self):
+        terminal("echo 'Enabling Flathub (needs an internet connection)...'; "
+                 "pkexec flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo "
+                 "&& echo && echo 'Done. Open \"Get apps\" to browse Flathub apps.'; "
+                 "echo; read -rp 'Press Enter to close.'", "Flathub")
+
+    def tips(self):
+        run(["xdg-open", "https://wiki.archlinux.org/"])
+
+
+def main():
+    if "--autostart" in sys.argv and os.path.exists(NOSHOW):
+        return 0
+    app = QApplication(sys.argv)
+    app.setDesktopFileName("sunshine-welcome")
+    app.setStyleSheet(STYLE)
+    app.setFont(QFont("Noto Sans", 10))
+    w = Welcome()
+    w.show()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

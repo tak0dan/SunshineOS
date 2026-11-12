@@ -1,0 +1,9 @@
+[Unit]
+Description=Check for updates every 6 hours
+[Timer]
+OnStartupSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=15min
+Persistent=true
+[Install]
+WantedBy=timers.target

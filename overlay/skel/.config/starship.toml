@@ -1,0 +1,192 @@
+# Sunshine OS prompt: warm pastel-orange pills, everything a power user wants at a glance.
+#  line 1: user@host (ssh/root only) | directory | git | languages | duration | clock
+#  line 2: exit status of the last command, background jobs, then the prompt arrow
+"$schema" = 'https://starship.rs/config-schema.json'
+add_newline = true
+command_timeout = 800
+
+format = """
+[╭─](#ffb86b)\
+$os\
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$git_state\
+$python\
+$nodejs\
+$rust\
+$golang\
+$java\
+$docker_context\
+$nix_shell\
+$package\
+$fill\
+$cmd_duration\
+$memory_usage\
+$battery\
+$time
+[╰─](#ffb86b)$status$jobs$sudo$character"""
+
+palette = 'sunshine'
+
+[palettes.sunshine]
+flame    = '#ff9e3d'   # bright
+apricot  = '#ffb86b'
+peach    = '#ffcba0'
+cream    = '#ffe8c2'
+rose     = '#ff8f7a'   # errors
+ink      = '#2a1a0e'   # dark text on the pills
+
+[os]
+disabled = false
+format = '[](fg:flame)[ $symbol ]($style)[](fg:flame bg:apricot)'
+style = 'bg:flame fg:ink bold'
+[os.symbols]
+Arch = '󰣇'
+Linux = ''
+EndeavourOS = ''
+Unknown = ''
+
+[username]
+show_always = false
+format = '[ $user]($style)'
+style_user = 'bg:apricot fg:ink'
+style_root = 'bg:rose fg:ink bold'
+
+[hostname]
+ssh_only = true
+format = '[@$hostname ]($style)'
+style = 'bg:apricot fg:ink'
+
+[directory]
+format = '[ $path[$read_only]($read_only_style) ]($style)[](fg:apricot bg:peach)'
+style = 'bg:apricot fg:ink bold'
+read_only = ' 󰌾'
+read_only_style = 'bg:apricot fg:rose'
+truncation_length = 4
+truncation_symbol = '…/'
+truncate_to_repo = true
+[directory.substitutions]
+Documents = '󰈙 '
+Downloads = ' '
+Music = '󰝚 '
+Pictures = ' '
+Videos = ' '
+Projects = '󰲋 '
+
+[git_branch]
+symbol = ''
+format = '[ $symbol $branch]($style)'
+style = 'bg:peach fg:ink'
+
+[git_status]
+format = '[ $all_status$ahead_behind ]($style)[](fg:peach)'
+style = 'bg:peach fg:ink'
+conflicted = '⚔${count} '
+ahead = '⇡${count} '
+behind = '⇣${count} '
+diverged = '⇕⇡${ahead_count}⇣${behind_count} '
+untracked = '?${count} '
+stashed = '≡${count} '
+modified = '!${count} '
+staged = '+${count} '
+renamed = '»${count} '
+deleted = '✘${count} '
+
+[git_state]
+format = '[ \($state( $progress_current/$progress_total)\)]($style)'
+style = 'fg:flame'
+
+[python]
+format = '[ ${symbol}${pyenv_prefix}(${version})(\($virtualenv\)) ]($style)'
+symbol = ' '
+style = 'fg:peach'
+[nodejs]
+format = '[ $symbol($version) ]($style)'
+symbol = ' '
+style = 'fg:peach'
+[rust]
+format = '[ $symbol($version) ]($style)'
+symbol = ' '
+style = 'fg:peach'
+[golang]
+format = '[ $symbol($version) ]($style)'
+symbol = ' '
+style = 'fg:peach'
+[java]
+format = '[ $symbol($version) ]($style)'
+symbol = ' '
+style = 'fg:peach'
+[docker_context]
+format = '[ $symbol$context ]($style)'
+symbol = ' '
+style = 'fg:peach'
+[nix_shell]
+format = '[ $symbol$state ]($style)'
+style = 'fg:peach'
+[package]
+format = '[ 󰏗 $version ]($style)'
+style = 'fg:cream'
+
+[fill]
+symbol = ' '
+
+[cmd_duration]
+min_time = 500
+show_milliseconds = false
+format = '[ 󱦟 $duration ]($style)'
+style = 'fg:flame'
+
+[memory_usage]
+disabled = false
+threshold = 70
+format = '[ 󰍛 $ram_pct ]($style)'
+style = 'fg:rose'
+
+[battery]
+format = '[ $symbol$percentage ]($style)'
+full_symbol = '󰁹'
+charging_symbol = '󰂄'
+discharging_symbol = '󰁿'
+[[battery.display]]
+threshold = 30
+style = 'fg:rose'
+[[battery.display]]
+threshold = 100
+style = 'fg:peach'
+
+[time]
+disabled = false
+time_format = '%H:%M:%S'
+format = '[](fg:apricot)[ 󰥔 $time ]($style)[](fg:apricot)'
+style = 'bg:apricot fg:ink bold'
+
+[status]
+disabled = false
+format = '[$symbol$status ]($style)'
+symbol = '✘ '
+success_symbol = ''
+not_found_symbol = '? '
+sigint_symbol = '󰜺 '
+signal_symbol = '⚡'
+style = 'fg:rose bold'
+map_symbol = true
+recognize_signal_code = true
+
+[jobs]
+symbol = '✦'
+number_threshold = 1
+format = '[$symbol$number ]($style)'
+style = 'fg:peach'
+
+[sudo]
+disabled = false
+format = '[󰌆 ]($style)'
+style = 'fg:flame'
+
+[character]
+success_symbol = '[❯](bold fg:flame)'
+error_symbol = '[❯](bold fg:rose)'
+vimcmd_symbol = '[❮](bold fg:apricot)'

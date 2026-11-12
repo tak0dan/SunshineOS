@@ -1,0 +1,8 @@
+NAME="Sunshine OS"
+PRETTY_NAME="Sunshine OS"
+ID=sunshineos
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;255;196;61"
+HOME_URL="https://github.com/tak0dan"
+LOGO=sunshineos

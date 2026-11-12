@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# GUI entry point: opens a terminal that runs the update with a polkit password prompt.
+exec konsole --hide-menubar -p tabtitle="Sunshine OS Update" -e pkexec /usr/local/bin/sunshine-update-run "$@"

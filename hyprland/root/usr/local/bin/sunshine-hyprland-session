@@ -1,0 +1,17 @@
+#!/bin/bash
+# Sunshine OS session: Hyprland first; if it cannot start on this machine (common on virtual
+# graphics cards without 3D), fall back to Plasma so the user always gets a desktop.
+LOG="${XDG_STATE_HOME:-$HOME/.local/state}/sunshine/session.log"
+mkdir -p "$(dirname "$LOG")"
+if systemd-detect-virt -q 2>/dev/null; then
+    # Virtual GPU: let Hyprland draw in software if the card has no 3D.
+    export WLR_RENDERER_ALLOW_SOFTWARE=1 AQ_NO_ATOMIC=1 LIBGL_ALWAYS_SOFTWARE=1 WLR_NO_HARDWARE_CURSORS=1
+fi
+start=$(date +%s)
+/usr/bin/start-hyprland >>"$LOG" 2>&1
+rc=$?
+if [ $rc -ne 0 ] && [ $(( $(date +%s) - start )) -lt 25 ]; then
+    echo "$(date '+%F %T') Hyprland exited with $rc after $(( $(date +%s) - start ))s, starting Plasma instead" >>"$LOG"
+    exec /usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland
+fi
+exit $rc

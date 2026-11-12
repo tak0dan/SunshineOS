@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Runs from a user timer: tells the user when updates are available.
+command -v checkupdates >/dev/null || exit 0
+n=$(checkupdates 2>/dev/null | grep -c .)
+[ "${n:-0}" -gt 0 ] || exit 0
+act=$(notify-send -a "Sunshine OS" -i system-software-update -A update="Update now" -A later="Later" \
+      "Updates are available" "$n package(s) can be updated.")
+[ "$act" = update ] && exec /usr/local/bin/sunshine-update

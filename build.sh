@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Build the Sunshine OS ISO inside a container; host is not modified.
+set -euo pipefail
+cd "$(dirname "$0")"
+CACHE=${SUNSHINE_CACHE:-$HOME/Projects/SunshineOS-cache}   # packages and downloads are kept here between builds
+mkdir -p "$CACHE/pacman"
+docker run --rm --privileged \
+  -v "$PWD/profile:/profile:ro" -v "$PWD/repo:/repo:ro" -v "$PWD/out:/out" -v "$PWD/build:/work" -v "$CACHE/pacman:/var/cache/pacman/pkg" -v "$PWD/tools:/tools:ro" \
+  sunshineos-builder bash -c 'pacman -Sy --noconfirm --needed grub >/dev/null 2>&1; bash /tools/prefetch.sh || true; rm -rf /work/* /work/.[!.]* && mkarchiso -v -w /work -o /out /profile'

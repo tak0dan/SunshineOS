@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+# Sunshine OS installer: copies the live system to disk (offline, no network needed).
+# Interactive (dialog) by default. Non-interactive: SUNSHINE_AUTO=1 plus
+#   SUNSHINE_DISK=/dev/xxx SUNSHINE_USER=name SUNSHINE_PASS=secret [SUNSHINE_HOSTNAME=..
+#   SUNSHINE_TZ=Europe/Madrid SUNSHINE_LOCALE=en_US.UTF-8 SUNSHINE_KEYMAP=us SUNSHINE_FS=ext4|btrfs]
+set -uo pipefail
+
+TITLE="Sunshine OS Installer"
+SRC=/run/archiso/airootfs
+MNT=/mnt/sunshine-target
+LOG=/var/log/sunshine-install.log
+AUTO=${SUNSHINE_AUTO:-0}
+
+[ "$(id -u)" -eq 0 ] || exec sudo -E "$0" "$@"
+# Warm dark look for the dialogs (default dialog is bright blue)
+export DIALOGRC=/tmp/sunshine-dialogrc
+cat > "$DIALOGRC" <<'RC'
+use_shadow = OFF
+use_colors = ON
+screen_color = (YELLOW,BLACK,ON)
+dialog_color = (WHITE,BLACK,OFF)
+title_color = (YELLOW,BLACK,ON)
+border_color = (YELLOW,BLACK,ON)
+border2_color = (YELLOW,BLACK,ON)
+button_active_color = (BLACK,YELLOW,OFF)
+button_inactive_color = (WHITE,BLACK,OFF)
+button_key_active_color = (BLACK,YELLOW,OFF)
+button_key_inactive_color = (YELLOW,BLACK,ON)
+button_label_active_color = (BLACK,YELLOW,OFF)
+button_label_inactive_color = (WHITE,BLACK,OFF)
+menubox_color = (WHITE,BLACK,OFF)
+menubox_border_color = (YELLOW,BLACK,OFF)
+menubox_border2_color = (YELLOW,BLACK,OFF)
+item_color = (WHITE,BLACK,OFF)
+item_selected_color = (BLACK,YELLOW,OFF)
+tag_color = (YELLOW,BLACK,OFF)
+tag_selected_color = (BLACK,YELLOW,OFF)
+tag_key_color = (YELLOW,BLACK,OFF)
+tag_key_selected_color = (BLACK,YELLOW,OFF)
+inputbox_color = (WHITE,BLACK,OFF)
+inputbox_border_color = (YELLOW,BLACK,OFF)
+inputbox_border2_color = (YELLOW,BLACK,OFF)
+form_active_text_color = (BLACK,YELLOW,OFF)
+form_text_color = (WHITE,BLACK,OFF)
+check_color = (WHITE,BLACK,OFF)
+check_selected_color = (BLACK,YELLOW,OFF)
+position_indicator_color = (YELLOW,BLACK,ON)
+searchbox_color = (WHITE,BLACK,OFF)
+searchbox_title_color = (YELLOW,BLACK,ON)
+searchbox_border_color = (YELLOW,BLACK,OFF)
+searchbox_border2_color = (YELLOW,BLACK,OFF)
+RC
+exec > >(tee -a "$LOG") 2>&1
+
+die()  { echo "ERROR: $*" >&2; command -v dialog >/dev/null && [ "$AUTO" != 1 ] && dialog --title "$TITLE" --msgbox "Installation failed:\n\n$*\n\nLog: $LOG" 12 70; cleanup; exit 1; }
+info() { echo "==> $*"; }
+
+cleanup() {
+  mountpoint -q "$MNT" && { sync; umount -R "$MNT" 2>/dev/null || umount -Rl "$MNT" 2>/dev/null; }
+}
+trap 'cleanup' EXIT
+
+[ -d "$SRC" ] || die "Not running from the Sunshine OS live ISO ($SRC missing)."
+if [ -d /sys/firmware/efi/efivars ]; then BOOT=uefi; else BOOT=bios; fi
+
+# ---------- inputs ----------
+ask_input() { # var title default
+  local v
+  if [ "$AUTO" = 1 ]; then return; fi
+  v=$(dialog --stdout --title "$TITLE" --inputbox "$2" 10 64 "$3") || { cleanup; exit 130; }
+  printf -v "$1" '%s' "$v"
+}
+
+DISK=${SUNSHINE_DISK:-}
+if [ -z "$DISK" ]; then
+  [ "$AUTO" = 1 ] && die "SUNSHINE_DISK required in auto mode"
+  mapfile -t rows < <(lsblk -dpno NAME,TYPE,SIZE,MODEL,TRAN -e 7,11,2 | awk '$2=="disk" && $1 !~ /zram|\/ram/ {$2=""; print}')
+  [ ${#rows[@]} -gt 0 ] || die "No installable disks found."
+  items=()
+  for r in "${rows[@]}"; do n=${r%% *}; items+=("$n" "${r#* }"); done
+  DISK=$(dialog --stdout --title "$TITLE" --menu "Select the target disk.\n\nTHE ENTIRE DISK WILL BE ERASED." 20 76 10 "${items[@]}") || { cleanup; exit 130; }
+fi
+[ -b "$DISK" ] || die "$DISK is not a block device."
+# never allow installing onto the medium we booted from
+live_dev=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null || true)
+[ -n "$live_dev" ] && [[ "$live_dev" == "$DISK"* ]] && die "$DISK is the live boot medium."
+
+HOSTNAME_=${SUNSHINE_HOSTNAME:-sunshine}
+USERNAME=${SUNSHINE_USER:-}
+PASS=${SUNSHINE_PASS:-}
+TZ_=${SUNSHINE_TZ:-UTC}
+LOCALE=${SUNSHINE_LOCALE:-en_US.UTF-8}
+KEYMAP=${SUNSHINE_KEYMAP:-us}
+FS=${SUNSHINE_FS:-ext4}
+
+if [ "$AUTO" != 1 ]; then
+  ask_input HOSTNAME_ "Computer name:" "$HOSTNAME_"
+  while :; do
+    ask_input USERNAME "Username (lowercase letters, digits, - _):" "${USERNAME:-}"
+    [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && break
+    dialog --title "$TITLE" --msgbox "Invalid username." 7 40
+  done
+  while :; do
+    p1=$(dialog --stdout --insecure --passwordbox "Password for $USERNAME (also used for administrator access):" 10 64) || { cleanup; exit 130; }
+    p2=$(dialog --stdout --insecure --passwordbox "Repeat password:" 10 64) || { cleanup; exit 130; }
+    [ -n "$p1" ] && [ "$p1" = "$p2" ] && { PASS=$p1; break; }
+    dialog --title "$TITLE" --msgbox "Passwords are empty or do not match." 7 46
+  done
+  region=$(dialog --stdout --title "$TITLE" --no-tags --menu "Time zone region:" 20 50 12 \
+    $(cd /usr/share/zoneinfo && for d in Africa America Antarctica Asia Atlantic Australia Europe Indian Pacific; do echo "$d" "$d"; done) UTC UTC) || { cleanup; exit 130; }
+  if [ "$region" = UTC ]; then TZ_=UTC; else
+    zone=$(dialog --stdout --title "$TITLE" --no-tags --menu "Time zone:" 22 50 14 \
+      $(cd "/usr/share/zoneinfo/$region" && find . -type f | sed 's|^\./||' | sort | awk '{print $1, $1}')) || { cleanup; exit 130; }
+    TZ_="$region/$zone"
+  fi
+  LOCALE=$(dialog --stdout --title "$TITLE" --menu "System language:" 20 60 12 \
+    en_US.UTF-8 "English (US)" en_GB.UTF-8 "English (UK)" es_ES.UTF-8 "Español" ca_ES.UTF-8 "Català" \
+    uk_UA.UTF-8 "Українська" fr_FR.UTF-8 "Français" de_DE.UTF-8 "Deutsch" it_IT.UTF-8 "Italiano" \
+    pt_PT.UTF-8 "Português" pl_PL.UTF-8 "Polski" ru_RU.UTF-8 "Русский") || { cleanup; exit 130; }
+  allmaps=$(localectl list-keymaps --no-pager)
+  kitems=()
+  for m in "us:English (US)" "uk:English (UK)" "es:Español" "ua:Українська" "de-latin1:Deutsch" "fr:Français" "it:Italiano" "pt-latin9:Português" "pl2:Polski" "ru:Русский"; do
+    grep -qx "${m%%:*}" <<<"$allmaps" && kitems+=("${m%%:*}" "${m#*:}")
+  done
+  KEYMAP=$(dialog --stdout --title "$TITLE" --menu "Keyboard layout:" 22 60 14 "${kitems[@]}" more "More layouts…") || { cleanup; exit 130; }
+  if [ "$KEYMAP" = more ]; then
+    KEYMAP=$(dialog --stdout --title "$TITLE" --no-tags --menu "All keyboard layouts:" 22 60 14 $(awk '{print $1, $1}' <<<"$allmaps")) || { cleanup; exit 130; }
+  fi
+  FS=$(dialog --stdout --title "$TITLE" --menu "Filesystem:" 10 50 2 ext4 "ext4 (simple, robust)" btrfs "btrfs (snapshots, compression)") || { cleanup; exit 130; }
+  dialog --title "$TITLE" --yesno "Ready to install:\n\n  Disk:      $DISK  (ERASED)\n  Boot mode: $BOOT\n  Hostname:  $HOSTNAME_\n  User:      $USERNAME\n  Time zone: $TZ_\n  Language:  $LOCALE\n  Keyboard:  $KEYMAP\n  Filesystem: $FS\n\nContinue?" 18 60 || { cleanup; exit 130; }
+fi
+[[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid username '$USERNAME'."
+[ -n "$PASS" ] || die "Empty password."
+case "$FS" in ext4|btrfs) ;; *) die "Unsupported filesystem $FS";; esac
+[ -e "/usr/share/zoneinfo/$TZ_" ] || die "Unknown time zone $TZ_"
+
+# ---------- partition ----------
+info "Partitioning $DISK ($BOOT)"
+swapoff -a 2>/dev/null
+umount -R "$MNT" 2>/dev/null
+for p in $(lsblk -lnpo NAME "$DISK" | tail -n +2); do umount "$p" 2>/dev/null; done
+wipefs -af "$DISK" >/dev/null || die "wipefs failed"
+sgdisk --zap-all "$DISK" >/dev/null 2>&1
+if [ "$BOOT" = uefi ]; then
+  sgdisk -n1:0:+2G -t1:ef00 -c1:SUNSHINE_ESP -n2:0:0 -t2:8304 -c2:sunshine-root "$DISK" || die "sgdisk failed"
+else
+  sgdisk -n1:0:+2M -t1:ef02 -c1:bios_grub -n2:0:0 -t2:8304 -c2:sunshine-root "$DISK" || die "sgdisk failed"
+fi
+partprobe "$DISK"; udevadm settle; sleep 1
+case "$DISK" in *[0-9]) P="${DISK}p";; *) P="$DISK";; esac
+ESP="${P}1"; ROOT="${P}2"
+[ -b "$ROOT" ] || die "Partition $ROOT did not appear."
+
+info "Formatting"
+[ "$BOOT" = uefi ] && { mkfs.fat -F32 -n SUNSHINEESP "$ESP" >/dev/null || die "mkfs.fat failed"; }
+if [ "$FS" = btrfs ]; then mkfs.btrfs -f -L sunshine "$ROOT" >/dev/null || die "mkfs.btrfs failed"; MOPT="compress=zstd,noatime"
+else mkfs.ext4 -F -L sunshine "$ROOT" >/dev/null || die "mkfs.ext4 failed"; MOPT="noatime"; fi
+
+mkdir -p "$MNT"
+mount -o "$MOPT" "$ROOT" "$MNT" || die "mount root failed"
+if [ "$BOOT" = uefi ]; then mkdir -p "$MNT/boot/efi"; mount "$ESP" "$MNT/boot/efi" || die "mount ESP failed"; fi
+
+# ---------- copy system ----------
+info "Copying system (this takes a few minutes)"
+rsync -aHAXx --info=progress2 --no-inc-recursive \
+  --exclude=/boot/efi --exclude='/etc/pacman.d/gnupg' "$SRC"/ "$MNT"/ || die "rsync failed"
+mkdir -p "$MNT"/{dev,proc,sys,run,tmp,mnt,boot/efi}
+chmod 1777 "$MNT/tmp"
+
+# kernel into /boot
+for k in "$MNT"/usr/lib/modules/*/vmlinuz; do
+  [ -f "$k" ] && { cp --sparse=never --reflink=never "$k" "$MNT/boot/vmlinuz-linux" && chmod 644 "$MNT/boot/vmlinuz-linux"; } && KVER=$(basename "$(dirname "$k")")
+done
+[ -f "$MNT/boot/vmlinuz-linux" ] || die "No kernel found in the system image."
+
+genfstab -U "$MNT" > "$MNT/etc/fstab" || die "genfstab failed"
+
+# ---------- remove live-session bits ----------
+info "Removing live-session configuration"
+cd "$MNT" || die "cd target"
+rm -f  etc/mkinitcpio.conf.d/archiso.conf etc/sddm.conf.d/autologin.conf etc/sudoers.d/10-live \
+       etc/ssh/sshd_config.d/10-archiso.conf etc/systemd/journald.conf.d/volatile-storage.conf \
+       etc/systemd/logind.conf.d/do-not-suspend.conf root/.zlogin root/.automated_script.sh \
+       etc/pacman.d/hooks/uncomment-mirrors.hook etc/pacman.d/hooks/zzzz99-remove-custom-hooks-from-airootfs.hook \
+       etc/systemd/system/choose-mirror.service etc/systemd/system/pacman-init.service \
+       etc/systemd/system/etc-pacman.d-gnupg.mount etc/systemd/system/livecd-*.service \
+       etc/systemd/system/sunshine-live-setup.service etc/systemd/system/multi-user.target.wants/sunshine-live-setup.service \
+       etc/systemd/network/20-*.network etc/systemd/system/multi-user.target.wants/{choose-mirror,pacman-init,livecd-talk,sshd,vboxservice,vmtoolsd}.service \
+       etc/systemd/system/sound.target.wants/livecd-alsa-unmuter.service
+rm -f etc/systemd/system/ldconfig.service etc/systemd/system/systemd-update-done.service; rm -rf etc/systemd/system/pacman-init.service.d etc/systemd/system/getty@tty1.service.d etc/systemd/system/systemd-networkd-wait-online.service.d \
+       home/sunshine
+rm -f  etc/systemd/system/systemd-loop@.service
+cat > etc/motd <<'EOF'
+Sunshine OS
+EOF
+cd /
+
+# ---------- chroot configuration ----------
+info "Configuring installed system"
+for d in dev proc sys run; do mount --rbind "/$d" "$MNT/$d" && mount --make-rslave "$MNT/$d"; done
+[ -d /sys/firmware/efi/efivars ] && mount --bind /sys/firmware/efi/efivars "$MNT/sys/firmware/efi/efivars" 2>/dev/null
+
+info "Installing the Hyprland desktop"
+/usr/local/bin/sunshine-hyprland-install "$MNT" || true
+
+echo "$HOSTNAME_" > "$MNT/etc/hostname"
+printf '127.0.0.1 localhost\n::1 localhost\n127.0.1.1 %s\n' "$HOSTNAME_" > "$MNT/etc/hosts"
+ln -sf "/usr/share/zoneinfo/$TZ_" "$MNT/etc/localtime"
+sed -i "s/^#\(${LOCALE//./\\.} \)/\1/; s/^#\(en_US\.UTF-8 \)/\1/" "$MNT/etc/locale.gen"
+echo "LANG=$LOCALE" > "$MNT/etc/locale.conf"
+printf 'KEYMAP=%s\n' "$KEYMAP" > "$MNT/etc/vconsole.conf"
+install -d "$MNT/etc/X11/xorg.conf.d"
+
+# Plasma/X keyboard follows console keymap when possible
+cat > "$MNT/etc/sddm.conf.d/10-sunshine.conf" <<EOF
+[Theme]
+Current=sunshine
+EOF
+
+# initramfs: standard (non-archiso) preset
+cat > "$MNT/etc/mkinitcpio.d/linux.preset" <<'EOF'
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux"
+PRESETS=('default')
+default_image="/boot/initramfs-linux.img"
+EOF
+cat > "$MNT/etc/mkinitcpio.conf.d/sunshine.conf" <<'EOF'
+HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)
+EOF
+
+cat > "$MNT/root/.sunshine-chroot.sh" <<EOS
+set -e
+locale-gen
+# microcode: userspace images must live in /boot for GRUB
+pacman-key --init >/dev/null 2>&1 && pacman-key --populate archlinux >/dev/null 2>&1 || true
+userdel -r sunshine 2>/dev/null || true
+getent group sunshine >/dev/null && groupdel sunshine 2>/dev/null || true
+useradd -m -G wheel,audio,video,storage,optical,lp,network,power,input,i2c -s /usr/bin/fish "$USERNAME"
+passwd -l root >/dev/null
+sed -i 's/^# \(%wheel ALL=(ALL:ALL) ALL\)/\1/' /etc/sudoers
+mkinitcpio -k "$KVER" -g /boot/initramfs-linux.img
+systemctl enable NetworkManager.service sddm.service bluetooth.service cups.socket power-profiles-daemon.service systemd-timesyncd.service systemd-resolved.service fstrim.timer >/dev/null 2>&1
+systemctl set-default graphical.target
+sed -i 's/^#\?GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Sunshine OS"/' /etc/default/grub
+sed -i '/^#\?GRUB_THEME=/d;/^#\?GRUB_GFXMODE=/d;/^#\?GRUB_TERMINAL_OUTPUT=/d' /etc/default/grub
+printf '%s\n' 'GRUB_THEME="/usr/share/grub/themes/sunshine/theme.txt"' 'GRUB_GFXMODE=1920x1080,1366x768,auto' 'GRUB_TERMINAL_OUTPUT=gfxterm' 'GRUB_DISABLE_BOOTNEXT=true' >> /etc/default/grub
+sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3"/' /etc/default/grub
+EOS
+echo "$USERNAME:$PASS" | chroot "$MNT" /bin/bash -c 'umask 077; cat > /root/.sunshine-cred'
+cat >> "$MNT/root/.sunshine-chroot.sh" <<'EOS'
+chpasswd < /root/.sunshine-cred
+shred -u /root/.sunshine-cred
+EOS
+if [ "$BOOT" = uefi ]; then
+  cat >> "$MNT/root/.sunshine-chroot.sh" <<'EOS'
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=SunshineOS --recheck || echo "NVRAM entry failed (continuing with removable path)"
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --removable --recheck
+EOS
+else
+  echo "grub-install --target=i386-pc --recheck $DISK" >> "$MNT/root/.sunshine-chroot.sh"
+fi
+echo 'grub-mkconfig -o /boot/grub/grub.cfg' >> "$MNT/root/.sunshine-chroot.sh"
+chroot "$MNT" /bin/bash /root/.sunshine-chroot.sh || die "Configuration in chroot failed (see $LOG)"
+rm -f "$MNT/root/.sunshine-chroot.sh"
+
+# sanity checks before declaring success
+[ -f "$MNT/boot/grub/grub.cfg" ] && grep -q "$(blkid -s UUID -o value "$ROOT")" "$MNT/boot/grub/grub.cfg" || die "grub.cfg does not reference the root filesystem."
+[ -f "$MNT/boot/initramfs-linux.img" ] || die "initramfs missing."
+[ "$BOOT" = uefi ] && { [ -f "$MNT/boot/efi/EFI/BOOT/BOOTX64.EFI" ] || die "UEFI fallback loader missing."; }
+
+info "Done."
+cleanup
+trap - EXIT
+[ "$AUTO" = 1 ] || dialog --title "$TITLE" --msgbox "Sunshine OS is installed.\n\nRemove the installation medium and reboot." 9 56
+echo "SUNSHINE_INSTALL_OK"

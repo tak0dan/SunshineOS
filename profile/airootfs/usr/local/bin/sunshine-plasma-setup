@@ -1,0 +1,44 @@
+#!/bin/bash
+# First Plasma login: Sunshine wallpaper (flower), panel launchers (Store instead of Discover). Runs once per user.
+M="${XDG_STATE_HOME:-$HOME/.local/state}/sunshine/plasma-setup.done"
+[ -e "$M" ] && exit 0
+for i in $(seq 1 40); do pgrep -x plasmashell >/dev/null && break; sleep 1; done
+sleep 4
+W="$HOME/Pictures/wallpapers/SunshineOS_Flower_Bloom.png"
+[ -f "$W" ] || W=/usr/share/sunshine/login.png
+APPLETS="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+for i in $(seq 1 30); do   # Plasma may not be ready to take the wallpaper yet: retry until it shows up in the config
+  command -v plasma-apply-wallpaperimage >/dev/null && plasma-apply-wallpaperimage "$W" >/dev/null 2>&1
+  grep -q "$(basename "$W")" "$APPLETS" 2>/dev/null && break; sleep 3
+done
+command -v plasma-apply-colorscheme >/dev/null && plasma-apply-colorscheme SunshineDark
+# Sunshine Win11 look: Plasma theme, window decoration with the buttons on the right
+command -v plasma-apply-desktoptheme >/dev/null && plasma-apply-desktoptheme SunshineWin11
+kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library org.kde.kwin.aurorae
+kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme __aurorae__svg__SunshineWin11
+kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnLeft ""
+kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight IAX
+qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1
+# Virtual machines (no 3D): turn off the heavy effects so Plasma stays responsive
+if systemd-detect-virt -q 2>/dev/null; then
+  kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false
+  kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled false
+  kwriteconfig6 --file kwinrc --group Plugins --key slidingpopupsEnabled false
+  kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0
+  qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1
+fi
+Q=$(command -v qdbus6 || command -v qdbus)
+# Win11 taskbar: 48 px, full width, menu + app icons centred between two spacers, tray and clock on the right
+[ -n "$Q" ] && "$Q" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'var L=["applications:sunshine-store.desktop","applications:org.kde.dolphin.desktop","applications:zen.desktop","applications:org.kde.konsole.desktop","applications:org.kde.kate.desktop","applications:sunshine-welcome.desktop"];
+var p=panels()[0];
+for (var id of p.widgetIds) p.widgetById(id).remove();
+p.height=48; p.floating=false; p.lengthMode="fill";
+p.addWidget("org.kde.plasma.panelspacer");
+var k=p.addWidget("org.kde.plasma.kickoff"); k.currentConfigGroup=["General"]; k.writeConfig("icon","sunshine-menu");
+var t=p.addWidget("org.kde.plasma.icontasks"); t.currentConfigGroup=["General"]; t.writeConfig("launchers",L);
+p.addWidget("org.kde.plasma.panelspacer");
+p.addWidget("org.kde.plasma.systemtray");
+p.addWidget("org.kde.plasma.digitalclock");
+p.addWidget("org.kde.plasma.showdesktop");
+' >/dev/null 2>&1
+mkdir -p "$(dirname "$M")"; : > "$M"

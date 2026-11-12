@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Live session only: give the live user a home built from /etc/skel (the ISO ships a pre-made, empty home).
+U=sunshine
+[ -d /home/$U ] || mkdir -p /home/$U
+cp -an /etc/skel/. /home/$U/ 2>/dev/null
+chown -R $U:$U /home/$U
+# Live session only: the live user has no password, so the screen must never lock, dim, switch off or suspend
+# during a long install. (An installed system keeps the normal Plasma defaults.)
+C=/home/$U/.config
+mkdir -p "$C"
+printf '\n[Daemon]\nAutolock=false\nLockOnResume=false\n' >> "$C/kscreenlockerrc"
+for p in AC Battery LowBattery; do
+  printf '\n[%s][Display]\nDimDisplayWhenIdle=false\nTurnOffDisplayWhenIdle=false\n\n[%s][SuspendAndShutdown]\nAutoSuspendAction=0\n' "$p" "$p" >> "$C/powerdevilrc"
+done
+chown -R $U:$U "$C"

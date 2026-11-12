@@ -1,0 +1,4 @@
+# Sunshine OS session defaults (read by PAM for every login session)
+EDITOR=nano
+VISUAL=nano
+BROWSER=zen-browser

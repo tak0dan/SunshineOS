@@ -1,0 +1,4 @@
+# What end-4's ./setup install sets with gsettings: dark mode and the GTK theme, so the shell's wallpaper colours come out dark
+[org/gnome/desktop/interface]
+color-scheme='prefer-dark'
+gtk-theme='adw-gtk3-dark'

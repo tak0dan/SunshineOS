@@ -1,0 +1,11 @@
+[SddmGreeterTheme]
+Name=Sunshine
+Description=Sunshine OS login screen
+Author=Sunshine OS
+Version=1.0
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=sunshine
+Theme-API=2.0
+QTVersion=6

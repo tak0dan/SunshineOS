@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Safe, friendly full-system update. Runs as root (via pkexec).
+set -u
+B=$'\e[1m'; Y=$'\e[38;5;220m'; G=$'\e[32m'; R=$'\e[31m'; N=$'\e[0m'
+say()  { printf '\n%s☀ %s%s\n' "$Y$B" "$*" "$N"; }
+ok()   { printf '%s✔ %s%s\n' "$G" "$*" "$N"; }
+bad()  { printf '%s✘ %s%s\n' "$R" "$*" "$N"; }
+finish() { echo; read -rp "Press Enter to close this window." _; exit "${1:-0}"; }
+
+[ "$(id -u)" -eq 0 ] || exec pkexec "$0" "$@"
+REAL_USER=${PKEXEC_UID:+$(getent passwd "$PKEXEC_UID" | cut -d: -f1)}
+
+say "Sunshine OS update"
+if [ -e /var/lib/pacman/db.lck ]; then
+  if pgrep -x pacman >/dev/null; then bad "Another update or install is running. Close it and try again."; finish 1; fi
+  bad "A stale lock file was found (no package manager is running); removing it."
+  rm -f /var/lib/pacman/db.lck
+fi
+ping -c1 -W3 archlinux.org >/dev/null 2>&1 || { bad "No internet connection. Connect to Wi-Fi or a cable and try again."; finish 1; }
+
+say "Latest Arch Linux news (read if something looks important)"
+curl -fsS --max-time 8 https://archlinux.org/feeds/news/ 2>/dev/null \
+  | grep -o '<title>[^<]*</title>' | sed -n '2,4p' | sed 's/<[^>]*>//g;s/^/  • /' || true
+
+say "Checking for updates"
+if command -v checkupdates >/dev/null; then
+  list=$(sudo -u "${REAL_USER:-nobody}" checkupdates 2>/dev/null || true)
+  n=$(printf '%s' "$list" | grep -c . || true)
+  [ "$n" -gt 0 ] && { echo "$n package update(s) available."; } || echo "No system package updates right now."
+fi
+
+if command -v timeshift >/dev/null && timeshift --list 2>/dev/null | grep -q 'Snapshots'; then
+  say "Creating a restore point first (so you can go back if anything breaks)"
+  timeshift --create --comments "Before Sunshine update" --tags D >/dev/null 2>&1 && ok "Restore point created" || bad "Could not create a restore point (continuing)"
+fi
+
+say "Updating system packages"
+if pacman -Syu; then ok "System packages are up to date"; else bad "The system update did not finish. Nothing is broken by stopping; you can run the update again."; finish 1; fi
+
+if command -v flatpak >/dev/null && flatpak remotes 2>/dev/null | grep -q .; then
+  say "Updating Flatpak apps"; flatpak update -y --noninteractive || true
+fi
+if command -v yay >/dev/null && [ -n "${REAL_USER:-}" ]; then
+  say "Updating AUR (community) packages"; sudo -u "$REAL_USER" yay -Sua --noconfirm --needed || true
+fi
+
+say "Tidying up"
+command -v paccache >/dev/null && paccache -rqk2 && ok "Old package cache cleaned"
+orph=$(pacman -Qdtq 2>/dev/null || true)
+[ -n "$orph" ] && echo "Unused packages (you can remove later): $(echo $orph | wc -w)"
+pn=$(find /etc -name '*.pacnew' 2>/dev/null | head -5)
+[ -n "$pn" ] && { echo "Config updates waiting for review (*.pacnew):"; echo "$pn"; }
+if [ -d /usr/lib/modules ] && ! [ -d "/usr/lib/modules/$(uname -r)" ]; then
+  printf '\n%sThe kernel was updated. Please restart your computer when convenient.%s\n' "$Y" "$N"
+fi
+ok "All done"
+finish 0

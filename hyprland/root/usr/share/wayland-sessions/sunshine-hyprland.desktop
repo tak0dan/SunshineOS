@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Sunshine (Hyprland)
+Comment=Sunshine OS desktop (falls back to Plasma if Hyprland cannot start)
+Exec=/usr/local/bin/sunshine-hyprland-session
+Type=Application
+DesktopNames=Hyprland

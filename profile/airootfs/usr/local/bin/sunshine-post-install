@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Runs inside the installed system (chroot) before user creation: strips live-session settings.
+cd / || exit 1
+rm -f  etc/mkinitcpio.conf.d/archiso.conf etc/sddm.conf.d/autologin.conf etc/sudoers.d/10-live \
+       etc/ssh/sshd_config.d/10-archiso.conf etc/systemd/journald.conf.d/volatile-storage.conf \
+       etc/systemd/logind.conf.d/do-not-suspend.conf root/.zlogin root/.automated_script.sh \
+       etc/pacman.d/hooks/uncomment-mirrors.hook etc/pacman.d/hooks/zzzz99-remove-custom-hooks-from-airootfs.hook \
+       etc/systemd/system/choose-mirror.service etc/systemd/system/pacman-init.service \
+       etc/systemd/system/etc-pacman.d-gnupg.mount etc/systemd/system/livecd-*.service etc/systemd/system/sunshine-live-setup.service etc/systemd/system/multi-user.target.wants/sunshine-live-setup.service \
+       etc/systemd/network/20-*.network etc/systemd/system/systemd-loop@.service \
+       etc/systemd/system/multi-user.target.wants/{choose-mirror,pacman-init,livecd-talk,sshd,vboxservice,vmtoolsd}.service \
+       etc/systemd/system/sound.target.wants/livecd-alsa-unmuter.service
+rm -f etc/systemd/system/ldconfig.service etc/systemd/system/systemd-update-done.service
+rm -rf etc/systemd/system/pacman-init.service.d etc/systemd/system/getty@tty1.service.d etc/systemd/system/systemd-networkd-wait-online.service.d
+userdel -r sunshine 2>/dev/null; getent group sunshine >/dev/null && groupdel sunshine 2>/dev/null
+rm -rf /home/sunshine
+echo "Sunshine OS" > etc/motd
+# GRUB look: Sunshine theme (gray, charcoal, pastel orange); /boot is read by GRUB, so no btrfs compression there (see mount.conf)
+if [ -f etc/default/grub ]; then
+  sed -i '/^#\?GRUB_THEME=/d;/^#\?GRUB_GFXMODE=/d;/^#\?GRUB_TERMINAL_OUTPUT=/d' etc/default/grub
+  printf '%s\n' 'GRUB_THEME="/usr/share/grub/themes/sunshine/theme.txt"' 'GRUB_GFXMODE=1920x1080,1366x768,auto' 'GRUB_TERMINAL_OUTPUT=gfxterm' 'GRUB_GFXPAYLOAD_LINUX=keep' 'GRUB_DISABLE_BOOTNEXT=true' >> etc/default/grub
+fi
+# kernel image + standard (non-archiso) initramfs setup
+# GRUB cannot read btrfs files that end in a hole ("premature end of file"), and the unpacked image is sparse:
+# rewrite the kernel fully allocated (no sparse, no reflink) both in /boot and in /usr/lib/modules.
+for k in usr/lib/modules/*/vmlinuz; do
+  [ -f "$k" ] || continue
+  cp --sparse=never --reflink=never "$k" "$k.dense" && mv -f "$k.dense" "$k" && chmod 644 "$k"
+  cp --sparse=never --reflink=never "$k" boot/vmlinuz-linux.dense && mv -f boot/vmlinuz-linux.dense boot/vmlinuz-linux && chmod 644 boot/vmlinuz-linux
+done
+cat > etc/mkinitcpio.d/linux.preset <<'EOP'
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux"
+PRESETS=('default')
+default_image="/boot/initramfs-linux.img"
+EOP
+echo 'HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)' > etc/mkinitcpio.conf.d/sunshine.conf
+pacman-key --init >/dev/null 2>&1 && pacman-key --populate archlinux >/dev/null 2>&1
+exit 0

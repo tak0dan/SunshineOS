@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Welcome
+Exec=/usr/local/bin/sunshine-welcome --autostart
+Icon=sunshineos
+X-KDE-autostart-after=panel
+OnlyShowIn=KDE;

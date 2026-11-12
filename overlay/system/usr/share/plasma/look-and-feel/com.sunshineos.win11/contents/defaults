@@ -1,0 +1,11 @@
+[kdeglobals][General]
+ColorScheme=SunshineDark
+
+[kwinrc][org.kde.kdecoration2]
+ButtonsOnLeft=
+ButtonsOnRight=IAX
+library=org.kde.kwin.aurorae
+theme=__aurorae__svg__SunshineWin11
+
+[plasmarc][Theme]
+name=SunshineWin11
