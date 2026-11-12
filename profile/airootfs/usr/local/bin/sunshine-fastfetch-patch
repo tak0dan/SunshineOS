@@ -19,8 +19,12 @@ curl -fsSL --retry 3 --max-time 120 -o "$tmp/src.tgz" "https://github.com/fastfe
 tar -xzf "$tmp/src.tgz" -C "$tmp" && cd "$tmp"/fastfetch-* || { echo "unpack failed"; exit 0; }
 patch -p1 --no-backup-if-mismatch < "$PATCH" >/dev/null || { echo "patch does not apply to $ver (stock fastfetch kept)"; exit 0; }
 echo "building (about a minute)"
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_FLASHFETCH=OFF -DBUILD_TESTS=OFF -DENABLE_SYSTEM_YYJSON=ON -Wno-dev >/dev/null 2>&1 \
-  && cmake --build build -j"$(nproc)" >/dev/null 2>&1 || { echo "build failed (stock fastfetch kept)"; exit 0; }
+# optional GPU modules need their header packages; without them build without those modules (the logos do not depend on them)
+vk=ON; [ -e /usr/include/vulkan/vulkan.h ] || vk=OFF
+ocl=ON; [ -e /usr/include/CL/cl.h ] || ocl=OFF
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_FLASHFETCH=OFF -DBUILD_TESTS=OFF -DENABLE_SYSTEM_YYJSON=ON \
+  -DENABLE_VULKAN=$vk -DENABLE_OPENCL=$ocl -Wno-dev > "$tmp/cmake.log" 2>&1 \
+  && cmake --build build -j"$(nproc)" >> "$tmp/cmake.log" 2>&1 || { echo "build failed (stock fastfetch kept); last lines:"; tail -8 "$tmp/cmake.log"; exit 0; }
 build/fastfetch --list-logos 2>/dev/null | grep -q '"Sunshine_OS"' || { echo "built binary lacks the logos (stock fastfetch kept)"; exit 0; }
 install -Dm755 build/fastfetch /usr/bin/fastfetch.sunshine && mv -f /usr/bin/fastfetch.sunshine /usr/bin/fastfetch && echo "fastfetch $ver now has the Sunshine and Sunshine_OS logos"
 exit 0

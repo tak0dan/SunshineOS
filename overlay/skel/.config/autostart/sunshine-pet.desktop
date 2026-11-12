@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Pet
+Exec=sunshine-pet --background
+OnlyShowIn=KDE;
+X-KDE-autostart-after=panel

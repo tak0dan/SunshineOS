@@ -103,10 +103,10 @@ index 9e40a4e..a3dc1ca 100644
 -hl.env("ILLOGICAL_IMPULSE_VIRTUAL_ENV", home_dir .. "/.local/state/quickshell/.venv")
 +hl.env("ILLOGICAL_IMPULSE_VIRTUAL_ENV", "/opt/illogical-impulse-venv")
 diff --git a/dots/.config/hypr/hyprland/execs.lua b/dots/.config/hypr/hyprland/execs.lua
-index b91f392..1e75fe4 100644
+index b91f392..26d50dd 100644
 --- a/dots/.config/hypr/hyprland/execs.lua
 +++ b/dots/.config/hypr/hyprland/execs.lua
-@@ -50,16 +50,17 @@ hl.on("hyprland.start", function ()
+@@ -50,16 +50,21 @@ hl.on("hyprland.start", function ()
      hl.exec_cmd("qs -c $qsConfig")
      hl.exec_cmd("$HOME/.config/hypr/custom/scripts/__restore_video_wallpaper.sh")
  
@@ -128,11 +128,15 @@ index b91f392..1e75fe4 100644
 +        hl.exec_cmd("foot -e btop", { workspace = 3 })
 +    end
 +    hl.exec_cmd("sleep 7; hyprctl dispatch 'hl.dsp.focus({workspace=1})'")
++    hl.exec_cmd("/usr/local/bin/sunshine-pet --background")
++    hl.exec_cmd("systemctl --user start librepods.service")
++    hl.exec_cmd("/usr/local/bin/sunshine-pods --background")
++    hl.exec_cmd("kdeconnect-indicator")
  
      -- Core components (authentication, lock screen, notification daemon)
      hl.exec_cmd("gnome-keyring-daemon --start --components=secrets")
 diff --git a/dots/.config/hypr/hyprland/general.lua b/dots/.config/hypr/hyprland/general.lua
-index 4342f10..e3b00b2 100644
+index 4342f10..d81862b 100644
 --- a/dots/.config/hypr/hyprland/general.lua
 +++ b/dots/.config/hypr/hyprland/general.lua
 @@ -257,7 +257,7 @@ hl.config({
@@ -144,11 +148,19 @@ index 4342f10..e3b00b2 100644
          numlock_by_default = true,
          repeat_delay = 250,
          repeat_rate = 35,
+@@ -273,6 +273,7 @@ hl.config({
+         }
+     },
+ 
++    ecosystem = { no_update_news = true, no_donation_nag = true },
+     misc = {
+         disable_hyprland_logo = true,
+         disable_splash_rendering = true,
 diff --git a/dots/.config/hypr/hyprland/rules.lua b/dots/.config/hypr/hyprland/rules.lua
-index 1f43b8b..988dd41 100644
+index 1f43b8b..31c55c9 100644
 --- a/dots/.config/hypr/hyprland/rules.lua
 +++ b/dots/.config/hypr/hyprland/rules.lua
-@@ -179,3 +179,14 @@ hl.layer_rule({ match = { namespace = "quickshell:wTaskView" }, no_anim = true})
+@@ -179,3 +179,21 @@ hl.layer_rule({ match = { namespace = "quickshell:wTaskView" }, no_anim = true})
  
  -- Launchers need to be FAST
  hl.layer_rule({ match = { namespace = "gtk4-layer-shell" }, no_anim = true})
@@ -159,7 +171,14 @@ index 1f43b8b..988dd41 100644
 +hl.window_rule({match = {class = "^(calamares|Calamares)$" },       size = {"(monitor_w*0.55)", "(monitor_h*0.75)"} })
 +hl.window_rule({match = {class = "^(sunshine-welcome)$" },          float = true})
 +hl.window_rule({match = {class = "^(sunshine-welcome)$" },          center = true})
-+hl.window_rule({match = {class = "^(sunshine-welcome)$" },          size = {"700", "600"} })
++hl.window_rule({match = {class = "^(sunshine-welcome)$" },          size = {"880", "640"} })
++hl.window_rule({match = {class = "^(sunshine-toolbox)$" },          float = true})
++hl.window_rule({match = {class = "^(sunshine-toolbox)$" },          center = true})
++hl.window_rule({match = {class = "^(sunshine-toolbox)$" },          size = {"700", "640"} })
++hl.window_rule({match = {class = "^(sunshine-pet)$" },              float = true})
++hl.window_rule({match = {class = "^(sunshine-pet)$" },              size = {"380", "560"} })
++hl.window_rule({match = {class = "^(sunshine-pods)$" },             float = true})
++hl.window_rule({match = {class = "^(sunshine-pods)$" },             size = {"420", "480"} })
 +hl.window_rule({match = {class = "^(sunshine-store)$" },            float = true})
 +hl.window_rule({match = {class = "^(sunshine-store)$" },            center = true})
 +hl.window_rule({match = {class = "^(sunshine-store)$" },            size = {"(monitor_w*0.7)", "(monitor_h*0.8)"} })
@@ -50199,10 +50218,10 @@ index f23cce5..236b204 100644
 diff --git a/dots/.config/starship.toml b/dots/.config/starship.toml
 old mode 100755
 new mode 100644
-index 32bdd20..38ff655
+index 32bdd20..d33620c
 --- a/dots/.config/starship.toml
 +++ b/dots/.config/starship.toml
-@@ -1,103 +1,156 @@
+@@ -1,103 +1,135 @@
 -# Don't print a new line at the start of the prompt
 -add_newline = false
 -# Pipes ╰─ ╭─
@@ -50214,73 +50233,53 @@ index 32bdd20..38ff655
 -# format = """
 -# $directory $fill $git_branch $cmd_duration
 -#  $character"""
-+# Sunshine OS prompt: dark rounded pills with warm orange text (SunshineOS colours)
-+#  line 1: OS | directory | git | languages ........................ duration | clock
-+#  line 2: exit status, background jobs, sudo, then the prompt arrow
-+"$schema" = 'https://starship.rs/config-schema.json'
-+add_newline = true
-+command_timeout = 800
-+palette = 'sunshine'
-+
- format = """
+-format = """
 -$cmd_duration $directory$git_branch
 -  $character"""
-+$os$username$hostname$directory$git_branch$git_status$git_state$python$nodejs$rust$golang$java$docker_context$nix_shell$package\
-+$fill$cmd_duration$memory_usage$battery$time
-+$status$jobs$sudo$character"""
-+
-+[palettes.sunshine]
-+pill    = '#262f47'   # pill background (dark navy)
-+flame   = '#ff9e3d'   # bright orange
-+apricot = '#ffb86b'
-+peach   = '#ffcba0'
-+cream   = '#ffe8c2'
-+gold    = '#ffc43d'
-+rose    = '#ff8f7a'   # errors
-+
-+[os]
-+disabled = false
-+format = '[](fg:pill)[ $symbol ](bg:pill fg:cream)[](fg:pill) '
-+[os.symbols]
-+Arch = '󰣇'
-+Linux = ''
-+EndeavourOS = ''
-+Unknown = '󰖙'   # sun: starship does not know ID=sunshineos yet
++# Sunshine OS prompt: the Tokyo Night preset layout (starship presets) in Sunshine colours, with the sun as OS icon
++"$schema" = 'https://starship.rs/config-schema.json'
  
 -[fill]
 -symbol = '-'
 -style = 'fg:245'
-+[username]
-+show_always = false
-+format = '[](fg:pill)[ $user ](bg:pill fg:peach)[](fg:pill) '
-+style_user = 'peach'
-+style_root = 'rose'
++format = """
++[░▒▓](#ffe8c2)\
++$os\
++[](bg:#ff9654 fg:#ffe8c2)\
++$directory\
++[](fg:#ff9654 bg:#262f47)\
++$git_branch\
++$git_status\
++[](fg:#262f47 bg:#1d2538)\
++$nodejs\
++$bun\
++$rust\
++$golang\
++$php\
++[](fg:#1d2538 bg:#161c2b)\
++$cmd_duration\
++$time\
++[ ](fg:#161c2b)\
++\n$status$character"""
  
 -# Replace the "❯" symbol in the prompt with "➜"
 -[character]                            # The name of the module we are configuring is "character"
 -success_symbol = "[ ](bold fg:243)"
 -error_symbol = "[ ](bold fg:244)"
-+[hostname]
-+ssh_only = true
-+format = '[](fg:pill)[ @$hostname ](bg:pill fg:peach)[](fg:pill) '
++[directory]
++style = "fg:#2a1a0e bg:#ff9654"
++format = "[ $path ]($style)"
++truncation_length = 3
++truncation_symbol = "…/"
  
 -# Disable the package module, hiding it from the prompt completely
 -[package]
 -disabled = true
-+[directory]
-+format = '[](fg:pill)[ $path[$read_only]($read_only_style) ](bg:pill fg:apricot)[](fg:pill) '
-+read_only = ' 󰌾'
-+read_only_style = 'bg:pill fg:rose'
-+truncation_length = 3
-+truncation_symbol = '…/'
-+truncate_to_repo = true
 +[directory.substitutions]
-+Documents = '󰈙 '
-+Downloads = ' '
-+Music = '󰝚 '
-+Pictures = ' '
-+Videos = ' '
-+Projects = '󰣋 '
++"Documents" = "󰈙 "
++"Downloads" = " "
++"Music" = " "
++"Pictures" = " "
  
  [git_branch]
 -style = "bg: 252"
@@ -50288,30 +50287,19 @@ index 32bdd20..38ff655
 -truncation_length = 12
 -truncation_symbol = ""
 -format = " 󰜥 [](bold fg:252)[$symbol $branch(:$remote_branch)](fg:235 bg:252)[ ](bold fg:252)"
-+symbol = ''
-+format = '[](fg:pill)[ $symbol $branch ](bg:pill fg:flame)[](fg:pill) '
- 
+-
 -[git_commit]
 -commit_hash_length = 4
 -tag_symbol = " "
-+[git_status]
-+format = '[](fg:pill)[ $all_status$ahead_behind ](bg:pill fg:rose)[](fg:pill) '
-+conflicted = '⚔${count} '
-+ahead = '⇡${count} '
-+behind = '⇣${count} '
-+diverged = '↕'
-+untracked = '?${count} '
-+stashed = '≡${count} '
-+modified = '!${count} '
-+staged = '+${count} '
-+renamed = '»${count} '
-+deleted = '✘${count} '
- 
- [git_state]
+-
+-[git_state]
 -format = '[\($state( $progress_current of $progress_total)\)]($style) '
 -cherry_pick = "[🍒 PICKING](bold red)"
--
--[git_status]
++symbol = ""
++style = "bg:#262f47"
++format = '[[ $symbol $branch ](fg:#ff9654 bg:#262f47)]($style)'
+ 
+ [git_status]
 -conflicted = " 🏳 "
 -ahead = " 🏎💨 "
 -behind = " 😰 "
@@ -50322,79 +50310,73 @@ index 32bdd20..38ff655
 -staged = '[++\($count\)](green)'
 -renamed = " ✍️ "
 -deleted = " 🗑 "
-+format = '[](fg:pill)[ \($state( $progress_current/$progress_total)\) ](bg:pill fg:gold)[](fg:pill) '
-+
-+[python]
-+format = '[](fg:pill)[ ${symbol}${pyenv_prefix}(${version})(\($virtualenv\)) ](bg:pill fg:peach)[](fg:pill) '
-+symbol = ' '
-+[nodejs]
-+format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
-+symbol = ' '
-+[rust]
-+format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
-+symbol = ' '
-+[golang]
-+format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
-+symbol = ' '
-+[java]
-+format = '[](fg:pill)[ $symbol($version) ](bg:pill fg:peach)[](fg:pill) '
-+symbol = ' '
-+[docker_context]
-+format = '[](fg:pill)[ $symbol$context ](bg:pill fg:peach)[](fg:pill) '
-+symbol = ' '
-+[nix_shell]
-+format = '[](fg:pill)[ $symbol$state ](bg:pill fg:peach)[](fg:pill) '
-+[package]
-+format = '[](fg:pill)[ 󰏗 $version ](bg:pill fg:cream)[](fg:pill) '
- 
+-
 -[hostname]
 -ssh_only = false
 -format =  "[•$hostname](bg:252 bold fg:235)[](bold fg:252)"
 -trim_at = ".companyname.com"
 -disabled = false
-+[fill]
-+symbol = ' '
- 
+-
 -[line_break]
 -disabled = false
-+[cmd_duration]
-+min_time = 500
-+show_milliseconds = false
-+format = '[](fg:pill)[ 󱧟 $duration ](bg:pill fg:flame)[](fg:pill) '
- 
- [memory_usage]
+-
+-[memory_usage]
 -disabled = true
 -threshold = -1
 -symbol = " "
 -style = "bold dimmed green"
-+disabled = false
-+threshold = 70
-+format = '[](fg:pill)[ 󰍛 $ram_pct ](bg:pill fg:rose)[](fg:pill) '
++style = "bg:#262f47"
++format = '[[($all_status$ahead_behind )](fg:#ff9654 bg:#262f47)]($style)'
 +
-+[battery]
-+format = '[](fg:pill)[ $symbol$percentage ](bg:pill fg:peach)[](fg:pill) '
-+full_symbol = '󰁹'
-+charging_symbol = '󰂄'
-+discharging_symbol = '󰁿'
-+[[battery.display]]
-+threshold = 30
-+style = 'rose'
-+[[battery.display]]
-+threshold = 100
-+style = 'peach'
++[jj_bookmark]
++symbol = ""
++style = "bg:#262f47"
++format = '[[ $symbol $bookmark(@$remote)$diverged( \\(+$overflow_count others\\)) ](fg:#ff9654 bg:#262f47)]($style)'
++
++[jj_status]
++style = "bg:#262f47"
++format = '[[($all )](fg:#ff9654 bg:#262f47)]($style)'
++
++[nodejs]
++symbol = ""
++style = "bg:#1d2538"
++format = '[[ $symbol ($version) ](fg:#ff9654 bg:#1d2538)]($style)'
++
++[bun]
++symbol = ""
++style = "bg:#1d2538"
++format = '[[ $symbol ($version) ](fg:#ff9654 bg:#1d2538)]($style)'
++
++[rust]
++symbol = ""
++style = "bg:#1d2538"
++format = '[[ $symbol ($version) ](fg:#ff9654 bg:#1d2538)]($style)'
++
++[golang]
++symbol = ""
++style = "bg:#1d2538"
++format = '[[ $symbol ($version) ](fg:#ff9654 bg:#1d2538)]($style)'
++
++[php]
++symbol = ""
++style = "bg:#1d2538"
++format = '[[ $symbol ($version) ](fg:#ff9654 bg:#1d2538)]($style)'
  
  [time]
  disabled = false
 -format = '🕙[\[ $time \]]($style) '
 -time_format = "%T"
-+time_format = '%H:%M'
-+format = '[](fg:pill)[ 󰥔 $time ](bg:pill fg:apricot)[](fg:pill)'
++time_format = "%R" # Hour:Minute Format
++style = "bg:#161c2b"
++format = '[[  $time ](fg:#ffcba0 bg:#161c2b)]($style)'
  
 -[username]
 -style_user = "bold bg:252 fg:235"
 -style_root = "red bold"
 -format = "[](bold fg:252)[$user]($style)"
-+[status]
++[os]
++style = "bg:#ffe8c2 fg:#2a1a0e"
++format = "[ $symbol ]($style)"
  disabled = false
 -show_always = true
 -
@@ -50405,7 +50387,7 @@ index 32bdd20..38ff655
 -truncation_length = 2
 -truncation_symbol = ".../"
 -format = '[](bold fg:255)[󰉋 → $path]($style)[](bold fg:255)'
--
+ 
 -
 -[directory.substitutions]
 -"Desktop" = "  "
@@ -50415,31 +50397,51 @@ index 32bdd20..38ff655
 -"Pictures" = "  "
 -"Videos" = "  "
 -"GitHub" = " 󰊤 "
++[os.symbols]
++Unknown = "󰖙"
++Windows = "󰍲"
++Ubuntu = "󰕈"
++SUSE = ""
++Raspbian = "󰐿"
++Mint = "󰣭"
++Macos = "󰀵"
++Manjaro = ""
++Linux = "󰖙"
++Gentoo = "󰣨"
++Fedora = "󰣛"
++Alpine = ""
++Amazon = ""
++Android = ""
++AOSC = ""
++Arch = "󰣇"
++Artix = "󰣇"
++EndeavourOS = ""
++CentOS = ""
++Debian = "󰣚"
++Redhat = "󱄛"
++RedHatEnterprise = "󱄛"
++Pop = ""
+ 
+ [cmd_duration]
+-min_time = 0
+-format = '[](bold fg:252)[󰪢 $duration](bold bg:252 fg:235)[](bold fg:252)'
++min_time = 500
++show_milliseconds = false
++style = "bg:#161c2b"
++format = '[[ 󱦟 $duration ](fg:#ff9654 bg:#161c2b)]($style)'
++
++[status]
++disabled = false
 +format = '[$symbol$status ]($style)'
 +symbol = '✘ '
 +success_symbol = ''
 +not_found_symbol = '? '
-+sigint_symbol = '󰜹 '
++sigint_symbol = '󰜺 '
 +signal_symbol = '⚡'
-+style = 'fg:rose bold'
++style = 'fg:#ff8f7a bold'
 +map_symbol = true
 +recognize_signal_code = true
 +
-+[jobs]
-+symbol = '✦'
-+number_threshold = 1
-+format = '[$symbol$number ]($style)'
-+style = 'fg:peach'
-+
-+[sudo]
-+disabled = false
-+format = '[󰌆 ]($style)'
-+style = 'fg:flame'
- 
--[cmd_duration]
--min_time = 0
--format = '[](bold fg:252)[󰪢 $duration](bold bg:252 fg:235)[](bold fg:252)'
 +[character]
-+success_symbol = '[❯](bold fg:gold)'
-+error_symbol = '[❯](bold fg:rose)'
-+vimcmd_symbol = '[❮](bold fg:apricot)'
++success_symbol = '[❯](bold fg:#ffc43d)'
++error_symbol = '[❯](bold fg:#ff8f7a)'

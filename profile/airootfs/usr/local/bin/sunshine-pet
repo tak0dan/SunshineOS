@@ -1,0 +1,936 @@
+#!/usr/bin/env python3
+"""Sunshine Pet: a real virtual pet for Sunshine OS.
+
+An egg hatches into one of nine species (and, once in 250 hatches, the signature flame Ember). Feed it, wash it, play with it,
+put it to bed and pet it. It grows egg -> baby -> child -> teen -> adult, and the way you cared for it decides what it becomes.
+Time only passes while the computer is awake and the pet app runs (it lives in the tray when its window is closed).
+
+usage: sunshine-pet [--background] [--render-sheet out.png] [--simulate MINUTES] [--force-species id]
+"""
+import json
+import math
+import os
+import random
+import subprocess
+import sys
+import time
+
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
+from PyQt6.QtGui import QAction, QColor, QFont, QIcon, QImage, QLinearGradient, QPainter, QPen, QPixmap
+from PyQt6.QtWidgets import (QApplication, QHBoxLayout, QInputDialog, QLabel, QMenu, QMessageBox, QPushButton,
+                             QSystemTrayIcon, QVBoxLayout, QWidget)
+
+STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "sunshine")
+STATE_FILE = os.path.join(STATE_DIR, "pet.json")
+SPEED = float(os.environ.get("SUNSHINE_PET_SPEED", "1"))      # >1 makes time pass faster (testing)
+
+NEEDS = ["hunger", "hygiene", "energy", "fun", "affection"]
+NEED_LABEL = {"hunger": "Food", "hygiene": "Clean", "energy": "Energy", "fun": "Fun", "affection": "Love"}
+# active minutes per stage
+STAGE_MIN = {"egg": 3, "baby": 45, "child": 300, "teen": 720}
+NEXT = {"egg": "baby", "baby": "child", "child": "teen", "teen": "adult"}
+# need loss per active minute
+DECAY = {"hunger": 1.1, "hygiene": 0.7, "energy": 0.55, "fun": 0.9, "affection": 0.65}
+
+# ------------------------------------------------------------------------------------------------ species
+# shape: body outline; feat: extra parts; colors: body, dark outline, belly (light)
+SPECIES = {
+    "blobbo":   dict(name="Blobbo",   weight=14, shape="blob",   feat=["cheeks"],            body="#7fe0b0", belly="#c9f7e0"),
+    "whiskers": dict(name="Whiskers", weight=12, shape="blob",   feat=["catears", "whiskers", "tail"], body="#ffb58a", belly="#ffe2cf"),
+    "hoppy":    dict(name="Hoppy",    weight=12, shape="tall",   feat=["longears", "cheeks"], body="#c9a8ff", belly="#efe4ff"),
+    "sprout":   dict(name="Sprout",   weight=12, shape="blob",   feat=["leaf"],              body="#8fd16a", belly="#d6f2c0"),
+    "boo":      dict(name="Boo",      weight=11, shape="ghost",  feat=["cheeks"],            body="#cfe9ff", belly="#ffffff"),
+    "cappy":    dict(name="Cappy",    weight=11, shape="cap",    feat=["spots"],             body="#ff6b6b", belly="#fff1dc"),
+    "bolt":     dict(name="Bolt",     weight=10, shape="box",    feat=["antenna", "screen"], body="#9fb4d0", belly="#dbe6f5"),
+    "drippy":   dict(name="Drippy",   weight=10, shape="drop",   feat=["shine"],             body="#6ec1ff", belly="#c8e9ff"),
+    "pickle":   dict(name="Pickle",   weight=8,  shape="cactus", feat=["arms", "flower"],    body="#5bbf7a", belly="#b9ecc8"),
+    "ember":    dict(name="Ember",    weight=0,  shape="flame",  feat=[],                    body="#ff9e3d", belly="#fff2b0"),
+}
+RARE = "ember"
+RARE_ODDS = 250
+COMMON = [k for k, v in SPECIES.items() if v["weight"] > 0]
+
+
+def roll_species(rng=random):
+    if rng.randrange(RARE_ODDS) == 0:
+        return RARE
+    return rng.choices(COMMON, weights=[SPECIES[k]["weight"] for k in COMMON])[0]
+
+
+def shade(hex_color, f):
+    c = QColor(hex_color)
+    h, s, v, _ = c.getHsvF()
+    return QColor.fromHsvF(max(0, h), min(1, s * (1.1 if f < 1 else 0.8)), max(0, min(1, v * f)))
+
+
+# ------------------------------------------------------------------------------------------------ sprites
+GRID = 32          # logical pixels per side of a pet frame
+
+
+class Canvas:
+    """A 32x32 pixel canvas that shapes are drawn on."""
+
+    def __init__(self):
+        self.img = QImage(GRID, GRID, QImage.Format.Format_ARGB32)
+        self.img.fill(Qt.GlobalColor.transparent)
+
+    def px(self, x, y, color):
+        if 0 <= x < GRID and 0 <= y < GRID:
+            self.img.setPixelColor(int(x), int(y), QColor(color))
+
+    def get(self, x, y):
+        return self.img.pixelColor(int(x), int(y)).alpha() > 0 if 0 <= x < GRID and 0 <= y < GRID else False
+
+    def rect(self, x0, y0, w, h, color):
+        for y in range(int(y0), int(y0 + h)):
+            for x in range(int(x0), int(x0 + w)):
+                self.px(x, y, color)
+
+    def fill_mask(self, mask, color):
+        for (x, y) in mask:
+            self.px(x, y, color)
+
+    def outline(self, mask, color):
+        for (x, y) in mask:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if (x + dx, y + dy) not in mask and not self.get(x + dx, y + dy):
+                    self.px(x + dx, y + dy, color)
+
+
+def ellipse(cx, cy, rx, ry):
+    return {(x, y) for y in range(int(cy - ry) - 1, int(cy + ry) + 2) for x in range(int(cx - rx) - 1, int(cx + rx) + 2)
+            if ((x + .5 - cx) / rx) ** 2 + ((y + .5 - cy) / ry) ** 2 <= 1}
+
+
+def box(x0, y0, w, h, r=2):
+    m = set()
+    for y in range(int(y0), int(y0 + h)):
+        for x in range(int(x0), int(x0 + w)):
+            dx = min(x - x0, x0 + w - 1 - x); dy = min(y - y0, y0 + h - 1 - y)
+            if dx + dy >= r or (dx >= r) or (dy >= r):
+                m.add((x, y))
+    return m
+
+
+def body_mask(shape, k, t):
+    """Pixels of the body. k = size factor of the life stage, t = animation frame."""
+    cx = 16
+    base = 29                                  # feet line
+    if shape == "blob":
+        rx, ry = 9 * k, 8 * k
+        return ellipse(cx, base - ry, rx, ry)
+    if shape == "tall":
+        rx, ry = 7 * k, 10 * k
+        return ellipse(cx, base - ry, rx, ry)
+    if shape == "box":
+        w, h = 16 * k, 14 * k
+        return box(cx - w / 2, base - h, w, h, 3)
+    if shape == "drop":
+        rx, ry = 8.5 * k, 9 * k
+        m = ellipse(cx, base - ry, rx, ry)
+        for i in range(int(7 * k)):                           # pointy top
+            w = max(1, int((i + 1) * rx / (7 * k) * 0.9))
+            for x in range(cx - w // 2, cx + (w + 1) // 2):
+                m.add((x, int(base - 2 * ry) + 1 - int(7 * k) + i + 1))
+        return m
+    if shape == "ghost":
+        rx, ry = 9 * k, 10 * k
+        m = {(x, y) for (x, y) in ellipse(cx, base - ry - 1, rx, ry) if y <= base - ry}
+        for y in range(int(base - ry), int(base) - 1):
+            for x in range(int(cx - rx), int(cx + rx) + 1):
+                wave = 1 if ((x + t) // 2) % 2 == 0 else 0
+                if y <= base - 2 + wave:
+                    m.add((x, y))
+        return m
+    if shape == "cap":
+        capw, caph = 17 * k, 9 * k
+        m = {(x, y) for (x, y) in ellipse(cx, base - 6 * k - caph / 2, capw / 2, caph) if y <= base - 6 * k}
+        m |= box(cx - 4 * k, base - 6 * k, 8 * k, 6 * k, 1)
+        return m
+    if shape == "cactus":
+        w, h = 11 * k, 20 * k
+        return box(cx - w / 2, base - h, w, h, 4)
+    return ellipse(cx, base - 8 * k, 8 * k, 8 * k)
+
+
+def draw_flame(c, k, t, mood):
+    """Ember: a living flame. Three layers that flicker."""
+    cx, base = 16, 29
+    flick = [0, 1, 0, -1][t % 4]
+    h = 22 * k; w = 14 * k
+    for layer, (scale, color) in enumerate(((1.0, "#ff7a1a"), (0.78, "#ffa63a"), (0.5, "#ffe27a"))):
+        mask = set()
+        for y in range(int(base - h * scale), int(base) + 1):
+            f = (base - y) / (h * scale)
+            width = w * scale * (math.sin(min(1, f * 1.05 + 0.04) * math.pi) ** 0.8) / 2 if f < 1 else 0
+            tip = flick * f * 2.2 * (1 if layer % 2 == 0 else -1)
+            for x in range(int(cx - width + tip), int(cx + width + tip) + 1):
+                mask.add((x, y))
+        # round the bottom
+        mask = {(x, y) for (x, y) in mask if not (y > base - 1 and abs(x - cx) > w * scale / 3)}
+        if layer == 0:
+            c.outline(mask, "#a8310b")
+        c.fill_mask(mask, color)
+    # two little side tongues
+    for sx in (-1, 1):
+        c.px(cx + sx * int(8 * k), int(base - 13 * k) + flick, "#ff7a1a"); c.px(cx + sx * int(8 * k), int(base - 14 * k) + flick, "#ffa63a")
+    return base - int(8 * k)
+
+
+def face(c, cx, ey, mood, k, asleep, dark="#2a1a0e"):
+    """Eyes and mouth. Eyes are 2x2 (bigger for babies)."""
+    gap = max(2, int(4 * k)) + 1
+    s = 2 if k < 0.9 else 3
+    xs = (cx - gap, cx + gap - s + 1)
+    if asleep:
+        for x in xs:
+            c.rect(x, ey + 1, s, 1, dark)
+        return
+    for x in xs:
+        if mood in ("happy", "love"):
+            c.px(x, ey + 1, dark); c.px(x + 1, ey, dark); c.px(x + 2 if s == 3 else x + 1, ey + 1, dark)       # ^ ^
+        elif mood in ("sad", "bad"):
+            c.rect(x, ey, s, s, dark); c.px(x + (1 if x < cx else 0), ey - 1, dark)                            # droopy brow
+        else:
+            c.rect(x, ey, s, s, dark); c.px(x, ey, "#ffffff")                                                  # shiny eye
+    my = ey + s + 2
+    if mood in ("happy", "love"):
+        c.rect(cx - 1, my, 3, 1, dark); c.px(cx - 2, my - 1, dark); c.px(cx + 2, my - 1, dark)
+    elif mood in ("sad", "bad"):
+        c.rect(cx - 1, my, 3, 1, dark); c.px(cx - 2, my + 1, dark); c.px(cx + 2, my + 1, dark)
+    elif mood == "eat":
+        c.rect(cx - 1, my - 1, 3, 3, dark)
+    else:
+        c.rect(cx - 1, my, 3, 1, dark)
+
+
+def feature_pass(c, name, sp, k, t, cx, top, ey, body, dark, belly, asleep):
+    if name == "catears":
+        for sx in (-1, 1):
+            for i in range(int(5 * k)):
+                for x in range(int(cx + sx * 6 * k - (i // 2) * 0 - (4 * k - i) // 2 * 0), int(cx + sx * 6 * k) + 1):
+                    pass
+            ax = int(cx + sx * 6 * k)
+            for i in range(max(3, int(5 * k))):
+                for dx in range(-(max(3, int(5 * k)) - i) // 2, (max(3, int(5 * k)) - i) // 2 + 1):
+                    c.px(ax + dx - sx * 1, top - i + 2, body)
+            c.px(ax - sx, top - 1, "#ffc4c4")
+    elif name == "longears":
+        for sx in (-1, 1):
+            ax = cx + sx * int(4 * k)
+            m = ellipse(ax, top - 5 * k + 2, 2.2 * k + 0.4, 7 * k)
+            c.outline(m, dark); c.fill_mask(m, body)
+            c.px(ax, int(top - 4 * k), "#ffc4d8")
+    elif name == "leaf":
+        for i in range(int(4 * k) + 1):
+            c.px(cx, top - i + 1, "#4a8a2a")
+        m = ellipse(cx + 3, top - 4 * k, 3.6, 1.8)
+        c.fill_mask(m, "#6fc04a"); c.outline(m, "#3a7020")
+        c.fill_mask(ellipse(cx - 3, top - 3 * k, 3, 1.5), "#8fd16a")
+    elif name == "antenna":
+        for i in range(int(5 * k) + 1):
+            c.px(cx, top - i, dark)
+        ball = "#ff6b6b" if (t // 2) % 2 == 0 else "#ffd56b"
+        c.rect(cx - 1, top - int(5 * k) - 2, 3, 3, ball)
+    elif name == "spots":
+        for (dx, dy) in ((-5, -6), (3, -9), (6, -4), (0, -4)):
+            c.fill_mask(ellipse(cx + dx * k, top + 4 - dy * 0 + dy * 0.5 * k + 3, 1.6 * k + .3, 1.3 * k + .3), "#fff1dc")
+    elif name == "tail":
+        for i in range(int(6 * k)):
+            c.px(cx + int(9 * k) + i // 2, 27 - int(3 * k) - i + ((t // 2) % 2), body)
+        c.px(cx + int(9 * k) + 3, 27 - int(3 * k) - 6 * int(k > 0.7) , dark)
+    elif name == "whiskers":
+        for sy in (0, 2):
+            for sx in (-1, 1):
+                c.rect(cx + sx * int(8 * k), ey + 3 + sy, 3, 1, dark) if k > 0.6 else None
+    elif name == "cheeks":
+        for sx in (-1, 1):
+            c.rect(cx + sx * int(6 * k) - 1, ey + 3, 3, 2, "#ff9aa8")
+    elif name == "arms":
+        for sx in (-1, 1):
+            ax = cx + sx * int(8 * k)
+            for i in range(int(6 * k)):
+                c.px(ax, 24 - int(4 * k) - i, body)
+                c.px(ax + sx, 24 - int(4 * k) - i, dark)
+            c.px(ax + sx * 0, 24 - int(4 * k) - int(6 * k), body)
+            for i in range(int(3 * k) + 1):
+                c.px(cx + sx * (int(5 * k) + i), 24 - int(4 * k), body)
+    elif name == "flower":
+        c.rect(cx - 1, top - 2, 3, 3, "#ff8fb8"); c.px(cx, top - 1, "#ffe27a")
+        c.px(cx, top - 3, "#ff8fb8"); c.px(cx - 2, top - 1, "#ff8fb8"); c.px(cx + 2, top - 1, "#ff8fb8")
+    elif name == "shine":
+        c.px(cx - 4, int(top + 5 * k), "#ffffff"); c.px(cx - 4, int(top + 6 * k), "#ffffff"); c.px(cx - 3, int(top + 4 * k), "#ffffff")
+    elif name == "screen":
+        c.rect(cx - 5 * k, ey - 2, 10 * k, 8 * k + 2, "#1d2a44")
+
+
+def accessories(c, stage, branch, cx, top, k, t):
+    """What care turned the pet into: sparkles, crown, bow, horns, dirt, tuft."""
+    if branch == "neat":
+        for (dx, dy) in ((-9, 2), (9, -1)):
+            on = (t // 2) % 2 == 0
+            c.px(cx + dx, top + dy, "#ffe27a"); c.px(cx + dx, top + dy - 1, "#ffe27a") if on else None
+            c.px(cx + dx - 1, top + dy, "#ffe27a"); c.px(cx + dx + 1, top + dy, "#ffe27a")
+    elif branch == "scruffy":
+        for (dx, dy) in ((-6, 8), (5, 12), (-2, 15)):
+            c.px(cx + dx, top + dy, "#7a5a3a")
+        for i in range(3):
+            c.px(cx - 2 + i * 2, top - 1 - (i % 2), "#7a5a3a")
+    elif branch == "ace":
+        for i, x in enumerate(range(cx - 4, cx + 5)):
+            c.px(x, top - 2 - (1 if i % 4 == 2 else 0), "#ffd23a")
+        c.px(cx, top - 4, "#ffd23a"); c.px(cx - 4, top - 4, "#ffd23a"); c.px(cx + 4, top - 4, "#ffd23a")
+        c.rect(cx - 4, top - 1, 9, 1, "#e0a800")
+    elif branch == "easy":
+        c.rect(cx - 5, top + 15 * k, 3, 3, "#ff8fb8"); c.rect(cx + 3, top + 15 * k, 3, 3, "#ff8fb8"); c.px(cx, top + 16 * k, "#ffd0e0")
+    elif branch == "gremlin":
+        for sx in (-1, 1):
+            for i in range(3):
+                c.px(cx + sx * (6 + i // 2), top - i, "#7a1d2a")
+            c.px(cx + sx * 6, top - 3, "#ff4a5a")
+
+
+def render_pet(species_id, stage, branch=None, mood="ok", frame=0, asleep=False):
+    """Returns a 32x32 QImage of the pet."""
+    sp = SPECIES[species_id]
+    c = Canvas()
+    if stage == "egg":
+        return render_egg(species_id, frame, 0.0)
+    k = {"baby": 0.5, "child": 0.68, "teen": 0.86, "adult": 1.0}[stage]
+    bob = 1 if (frame // 2) % 2 and not asleep else 0
+    if sp["shape"] == "flame":
+        ey = draw_flame(c, k, frame, mood) - 3
+        face(c, 16, ey, mood, k, asleep, "#7a2b0c")
+        top = int(29 - 22 * k)
+        accessories(c, stage, branch, 16, top, k, frame)
+        return c.img
+    body, belly = sp["body"], sp["belly"]
+    if branch == "gremlin":
+        body = shade(body, 0.7).name(); belly = shade(belly, 0.85).name()
+    dark = shade(body, 0.45).name()
+    mask = body_mask(sp["shape"], k, frame)
+    if bob:
+        mask = {(x, y - 1) for (x, y) in mask if y - 1 >= 0} | {(x, 29) for (x, y) in mask if y == 29}
+    ys = [y for (_, y) in mask]
+    top, bottom = min(ys), max(ys)
+    cx = 16
+    c.outline(mask, dark)
+    c.fill_mask(mask, body)
+    # belly + highlight
+    bm = {(x, y) for (x, y) in mask if y > top + (bottom - top) * 0.55 and abs(x - cx) < (6 * k + 1)}
+    if sp["shape"] != "cap":
+        c.fill_mask(bm, belly)
+    for (x, y) in [(m[0], m[1]) for m in mask if m[1] <= top + 1 + int(2 * k) and m[0] < cx - 1 and m[1] > top][:max(2, int(5 * k))]:
+        c.px(x, y, shade(body, 1.18))
+    ey = top + int((bottom - top) * (0.32 if sp["shape"] not in ("cap",) else 0.2))
+    if sp["shape"] == "cap":
+        ey = bottom - int(5 * k)
+    for f in sp["feat"]:
+        feature_pass(c, f, sp, k, frame, cx, top, ey, body, dark, belly, asleep)
+    face(c, cx, ey, mood, k, asleep, "#2a1a0e" if "screen" not in sp["feat"] else "#7fffd0")
+    if branch == "gremlin" and not asleep:
+        for sx in (-1, 1):
+            c.px(cx + sx * (int(4 * k) + 1) - (0 if sx < 0 else 0), ey, "#ff4a5a")
+    accessories(c, stage, branch, cx, top, k, frame)
+    return c.img
+
+
+def render_egg(species_id, frame, progress):
+    sp = SPECIES[species_id]
+    c = Canvas()
+    shake = 0
+    if progress > 0.7:
+        shake = [-1, 0, 1, 0][frame % 4]
+    mask = {(x + shake, y) for (x, y) in ellipse(16, 18, 8, 10.5)}
+    c.outline(mask, "#6b5a46"); c.fill_mask(mask, "#f6efe2")
+    spot = sp["body"]
+    for (x, y) in ((12, 14), (13, 14), (19, 20), (20, 20), (20, 21), (14, 23), (13, 23), (18, 12), (11, 19)):
+        if (x + shake, y) in mask:
+            c.px(x + shake, y, spot)
+    if species_id == RARE and (frame // 3) % 4 == 0:          # the rare one sparkles very slightly
+        c.px(14 + shake, 13, "#ffe27a"); c.px(20 + shake, 17, "#ffe27a")
+    if progress > 0.6:                                         # cracks
+        for (x, y) in ((16, 9), (17, 10), (16, 11), (17, 12), (15, 12)):
+            c.px(x + shake, y, "#6b5a46")
+    return c.img
+
+
+# ------------------------------------------------------------------------------------------------ game logic
+def new_pet(species=None, name=None):
+    sid = species or roll_species()
+    return {"v": 1, "species": sid, "name": name or SPECIES[sid]["name"], "stage": "egg", "stage_min": 0.0, "total_min": 0.0,
+            "needs": {n: 80.0 for n in NEEDS}, "care_sum": 0.0, "care_n": 0, "branch": None, "asleep": False, "mess": False,
+            "born": time.time(), "last_tick": time.time(), "zero_min": 0.0, "gone": None, "hatched": False, "events": []}
+
+
+class Pet:
+    def __init__(self):
+        self.s = None
+        self.load()
+
+    def load(self):
+        try:
+            with open(STATE_FILE) as f:
+                self.s = json.load(f)
+        except (OSError, ValueError):
+            self.s = new_pet()
+            self.save()
+
+    def save(self):
+        os.makedirs(STATE_DIR, exist_ok=True)
+        tmp = STATE_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(self.s, f)
+        os.replace(tmp, STATE_FILE)
+
+    def log(self, text):
+        self.s["events"] = (self.s.get("events", []) + [text])[-20:]
+
+    # ---- time
+    def tick(self, minutes):
+        """Advance `minutes` of active time. Returns a list of notification texts."""
+        s = self.s; notes = []
+        if s["gone"]:
+            return notes
+        minutes *= SPEED
+        s["total_min"] += minutes
+        s["stage_min"] += minutes
+        if s["stage"] != "egg":
+            for n in NEEDS:
+                rate = DECAY[n] * minutes
+                if s["asleep"]:
+                    rate = -3.0 * minutes if n == "energy" else rate * 0.3
+                elif n == "energy" and s["asleep"] is False:
+                    pass
+                s["needs"][n] = max(0.0, min(100.0, s["needs"][n] - rate))
+            if s["asleep"] and s["needs"]["energy"] >= 99:
+                s["asleep"] = False; notes.append(f"{s['name']} woke up refreshed")
+            if s["mess"]:
+                s["needs"]["hygiene"] = max(0.0, s["needs"]["hygiene"] - 0.6 * minutes)
+            avg = sum(s["needs"].values()) / len(NEEDS)
+            s["care_sum"] += avg * minutes; s["care_n"] += minutes
+            if avg < 8:
+                s["zero_min"] += minutes
+            else:
+                s["zero_min"] = max(0.0, s["zero_min"] - minutes)
+            if s["zero_min"] > 180:
+                s["gone"] = "ran away"; self.log(f"{s['name']} ran away after too long alone."); notes.append(f"{s['name']} ran away...")
+        # growth
+        limit = STAGE_MIN.get(s["stage"])
+        if limit and s["stage_min"] >= limit:
+            notes += self.evolve()
+        return notes
+
+    def avg_care(self):
+        return (self.s["care_sum"] / self.s["care_n"]) if self.s["care_n"] else 70.0
+
+    def evolve(self):
+        s = self.s; avg = self.avg_care(); old = s["stage"]; new = NEXT[old]
+        if old == "egg":
+            s["hatched"] = True
+            msg = f"The egg hatched: it is {SPECIES[s['species']]['name']}!" + (" A very rare Ember!" if s["species"] == RARE else "")
+        elif old == "child":
+            s["branch"] = "neat" if avg >= 55 else "scruffy"
+            msg = f"{s['name']} became a {s['branch']} teen"
+        elif old == "teen":
+            if s["branch"] == "scruffy":
+                s["branch"] = "gremlin" if avg < 45 else "easy"
+            else:
+                s["branch"] = "ace" if avg >= 70 else "easy"
+            msg = f"{s['name']} grew up: {s['branch']}"
+        else:
+            msg = f"{s['name']} grew up"
+        s["stage"] = new; s["stage_min"] = 0.0; s["care_sum"] = 0.0; s["care_n"] = 0
+        self.log(msg)
+        return [msg]
+
+    # ---- care
+    def feed(self):
+        s = self.s
+        if s["stage"] == "egg" or s["gone"]:
+            return "An egg does not eat."
+        if s["asleep"]:
+            s["asleep"] = False
+        if s["needs"]["hunger"] > 92:
+            return f"{s['name']} is full."
+        s["needs"]["hunger"] = min(100.0, s["needs"]["hunger"] + 38)
+        if random.random() < 0.45:
+            s["mess"] = True
+        return "yum"
+
+    def wash(self):
+        s = self.s
+        if s["stage"] == "egg" or s["gone"]:
+            return "An egg is clean already."
+        s["asleep"] = False
+        s["mess"] = False
+        s["needs"]["hygiene"] = min(100.0, s["needs"]["hygiene"] + 45)
+        return "splash"
+
+    def play(self):
+        s = self.s
+        if s["stage"] == "egg" or s["gone"]:
+            return "An egg cannot play yet."
+        if s["asleep"]:
+            return f"{s['name']} is asleep."
+        if s["needs"]["energy"] < 15:
+            return f"{s['name']} is too tired to play."
+        s["needs"]["fun"] = min(100.0, s["needs"]["fun"] + 32)
+        s["needs"]["energy"] = max(0.0, s["needs"]["energy"] - 10)
+        s["needs"]["hunger"] = max(0.0, s["needs"]["hunger"] - 4)
+        return "play"
+
+    def pet(self):
+        s = self.s
+        if s["gone"]:
+            return ""
+        if s["stage"] == "egg":
+            s["stage_min"] += 0.2 * SPEED
+            return "tap"
+        if s["asleep"]:
+            return ""
+        s["needs"]["affection"] = min(100.0, s["needs"]["affection"] + 12)
+        return "love"
+
+    def toggle_sleep(self):
+        s = self.s
+        if s["stage"] == "egg" or s["gone"]:
+            return
+        s["asleep"] = not s["asleep"]
+
+    def let_go(self):
+        self.log(f"You let {self.s['name']} go.")
+        self.s = new_pet()
+        self.save()
+
+    def mood(self):
+        s = self.s
+        if s["stage"] == "egg":
+            return "ok"
+        avg = sum(s["needs"].values()) / len(NEEDS)
+        if min(s["needs"].values()) < 15:
+            return "bad"
+        return "love" if avg > 85 else "happy" if avg > 65 else "ok" if avg > 40 else "sad"
+
+    def worst(self):
+        s = self.s
+        low = [(v, n) for n, v in s["needs"].items() if v < 35]
+        return [n for _, n in sorted(low)]
+
+
+def system_flavour():
+    """Pending updates make it hungrier, like the real pet-care chores of a computer."""
+    try:
+        with open(os.path.expanduser("~/.cache/sunshine/updates-count")) as f:
+            return 1.4 if int(f.read().strip() or 0) >= 10 else 1.0
+    except (OSError, ValueError):
+        return 1.0
+
+
+# ------------------------------------------------------------------------------------------------ interface
+BG = "#0e1422"; PANEL = "#1a202d"; LINE = "#2a3550"; INK = "#efe5d0"; ORANGE = "#ff9654"; GOLD = "#ffc43d"
+NEED_COLOR = {"hunger": "#ff9654", "hygiene": "#6ec1ff", "energy": "#ffe27a", "fun": "#c9a8ff", "affection": "#ff8fb8"}
+ICONS = {
+    "hunger":    ["..1..", ".111.", "11111", "11111", ".111."],
+    "hygiene":   [".1.1.", "1...1", ".1.1.", "1...1", ".111."],
+    "energy":    ["..11.", ".11..", "1111.", "..11.", ".11.."],
+    "fun":       [".111.", "11111", "11111", "11111", ".111."],
+    "affection": [".1.1.", "11111", "11111", ".111.", "..1.."],
+}
+
+
+def pixmap_of(img, scale):
+    return QPixmap.fromImage(img.scaled(GRID * scale, GRID * scale, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.FastTransformation))
+
+
+class Room(QWidget):
+    def __init__(self, pet):
+        super().__init__()
+        self.pet = pet
+        self.frame = 0
+        self.fx = []                  # floating effects: [kind, x, y, ttl]
+        self.px = 150.0               # pet x position in the room
+        self.dir = 1
+        self.setMinimumSize(340, 250)
+        self.setMouseTracking(True)
+
+    def sizeHint(self):
+        from PyQt6.QtCore import QSize
+        return QSize(360, 260)
+
+    def add_fx(self, kind):
+        self.fx.append([kind, self.px + 40 + random.randint(-14, 14), 150, 14])
+
+    def step(self):
+        self.frame += 1
+        s = self.pet.s
+        if s["stage"] != "egg" and not s["asleep"] and not s["gone"] and self.frame % 3 == 0:
+            if random.random() < 0.08:
+                self.dir *= -1
+            self.px += self.dir * 3
+            if self.px < 30 or self.px > self.width() - 30 - GRID * 4:
+                self.dir *= -1
+        self.fx = [[k, x, y - 3, t - 1] for (k, x, y, t) in self.fx if t > 1]
+        self.update()
+
+    def pet_rect(self):
+        scale = 5 if self.pet.s["stage"] in ("baby", "egg") else 6
+        w = GRID * scale
+        return QRectF(self.px, self.height() - 32 - w + 14, w, w)
+
+    def mousePressEvent(self, e):
+        r = self.pet_rect()
+        if r.contains(e.position()):
+            res = self.pet.pet()
+            if res == "love":
+                for _ in range(2):
+                    self.add_fx("heart")
+            self.pet.save(); self.update()
+
+    def paintEvent(self, e):
+        p = QPainter(self)
+        w, h = self.width(), self.height()
+        hour = time.localtime().tm_hour + time.localtime().tm_min / 60
+        night = hour < 6.5 or hour > 19.5
+        sleeping = self.pet.s["asleep"]
+        dim = night or sleeping
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, QColor("#1b2140" if dim else "#ffd9a8")); g.setColorAt(1, QColor("#2a2f55" if dim else "#ffb27a"))
+        p.fillRect(0, 0, w, h - 52, g)
+        # window with the real sky
+        sky_night = night or sleeping
+        p.setPen(QPen(QColor("#6b5a46"), 4)); p.setBrush(QColor("#0e1830" if sky_night else "#8fd3ff"))
+        p.drawRect(w - 120, 24, 80, 70)
+        p.setPen(Qt.PenStyle.NoPen)
+        if sky_night:
+            p.setBrush(QColor("#fdf0dc")); p.drawEllipse(QPointF(w - 92, 52), 10, 10)
+            p.setBrush(QColor("#0e1830")); p.drawEllipse(QPointF(w - 87, 49), 9, 9)
+            for i, (sx, sy) in enumerate(((w - 70, 40), (w - 60, 70), (w - 105, 80), (w - 78, 85))):
+                if (self.frame // 4 + i) % 3:
+                    p.setBrush(QColor("#fdf0dc")); p.drawRect(sx, sy, 3, 3)
+        else:
+            p.setBrush(QColor("#ffd23a")); p.drawEllipse(QPointF(w - 80, 52), 12, 12)
+            for a in range(8):
+                ang = a * math.pi / 4 + (self.frame // 6) * 0.2
+                p.drawRect(int(w - 80 + math.cos(ang) * 19), int(52 + math.sin(ang) * 19), 4, 4)
+        p.setPen(QPen(QColor("#6b5a46"), 3)); p.drawLine(w - 80, 24, w - 80, 94); p.drawLine(w - 120, 59, w - 40, 59)
+        # shelf + lamp
+        p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor("#7a5a3a")); p.drawRect(24, 96, 90, 6)
+        p.setBrush(QColor("#ffcf6b" if not sleeping else "#8a7a4a")); p.drawRect(44, 70, 24, 26)
+        p.setBrush(QColor("#fff1b8" if not sleeping else "#5a5030")); p.drawRect(50, 76, 12, 14)
+        # floor
+        p.setBrush(QColor("#8a5a3a")); p.drawRect(0, h - 52, w, 52)
+        p.setPen(QPen(QColor("#6e4528"), 2))
+        for i in range(0, w, 46):
+            p.drawLine(i, h - 52, i, h)
+        p.drawLine(0, h - 26, w, h - 26)
+        # pet
+        s = self.pet.s
+        if s["gone"]:
+            p.setPen(QColor(INK)); p.setFont(QFont("Noto Sans", 11))
+            p.drawText(QRectF(0, 0, w, h), Qt.AlignmentFlag.AlignCenter, f"{s['name']} is gone.\nA new egg is waiting.")
+            return
+        if s["stage"] == "egg":
+            prog = s["stage_min"] / STAGE_MIN["egg"]
+            img = render_egg(s["species"], self.frame, prog)
+        else:
+            img = render_pet(s["species"], s["stage"], s["branch"], self.pet.mood(), self.frame, s["asleep"])
+        scale = 5 if s["stage"] in ("baby", "egg") else 6
+        r = self.pet_rect()
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+        # shadow
+        p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor(0, 0, 0, 70)); p.drawEllipse(QPointF(r.center().x(), r.bottom() - 4), 34, 8)
+        if s["species"] == RARE and s["stage"] != "egg":
+            for i in range(3):                                     # the flame lights the room
+                p.setBrush(QColor(255, 160, 60, 24)); p.drawEllipse(r.center(), 60 + i * 16, 60 + i * 16)
+        p.drawPixmap(int(r.left()), int(r.top()), pixmap_of(img, scale))
+        # mess
+        if s["mess"]:
+            mx = int(r.right() + 4) if r.right() + 40 < w else int(r.left() - 30)
+            p.setBrush(QColor("#7a4a2a")); p.drawEllipse(mx, h - 58, 20, 10); p.drawEllipse(mx + 4, h - 66, 12, 8)
+            p.setBrush(QColor("#8d5a36")); p.drawEllipse(mx + 7, h - 72, 6, 6)
+        # sleeping zzz
+        if s["asleep"]:
+            p.setPen(QColor("#fdf0dc")); p.setFont(QFont("Noto Sans", 12, QFont.Weight.Bold))
+            for i in range(3):
+                p.drawText(int(r.right() - 10 + i * 8), int(r.top() + 20 - i * 14 - (self.frame // 5 % 3) * 2), "z")
+        # needs bubble
+        worst = self.pet.worst() if s["stage"] != "egg" and not s["asleep"] else []
+        if worst:
+            n = worst[(self.frame // 14) % len(worst)]
+            bx, by = int(r.center().x() - 16), int(r.top() - 6)
+            p.setPen(QPen(QColor("#2a1a0e"), 2)); p.setBrush(QColor("#fdf0dc")); p.drawRoundedRect(bx, by, 32, 28, 6, 6)
+            self.draw_icon(p, n, bx + 6, by + 4, 4, NEED_COLOR[n])
+        # effects
+        for kind, x, y, ttl in self.fx:
+            if kind == "heart":
+                self.draw_icon(p, "affection", int(x), int(y), 3, "#ff6b9a")
+            elif kind == "food":
+                self.draw_icon(p, "hunger", int(x), int(y), 4, "#ff9654")
+            elif kind == "bubble":
+                p.setPen(QPen(QColor("#d6f0ff"), 2)); p.setBrush(Qt.BrushStyle.NoBrush); p.drawEllipse(QPointF(x, y), 6, 6)
+            elif kind == "star":
+                self.draw_icon(p, "fun", int(x), int(y), 3, "#ffe27a")
+
+    @staticmethod
+    def draw_icon(p, need, x, y, sc, color):
+        p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor(color))
+        for ry, row in enumerate(ICONS[need]):
+            for rx, ch in enumerate(row):
+                if ch == "1":
+                    p.drawRect(x + rx * sc, y + ry * sc, sc, sc)
+
+
+STYLE = f"""
+QWidget {{ background: {BG}; color: {INK}; font-size: 13px; }}
+QLabel#name {{ font-size: 20px; font-weight: bold; color: {GOLD}; }}
+QLabel#sub {{ color: #a89c88; }}
+QPushButton {{ background: {PANEL}; border: 1px solid {LINE}; border-radius: 8px; padding: 9px 4px; }}
+QPushButton:hover {{ background: #262f47; border-color: {ORANGE}; }}
+QPushButton:pressed {{ background: #333e5c; }}
+"""
+
+
+class PetWindow(QWidget):
+    def __init__(self, pet, app):
+        super().__init__()
+        self.pet = pet
+        self.app = app
+        self.setWindowTitle("Sunshine Pet")
+        self.setMinimumWidth(380)
+        v = QVBoxLayout(self); v.setContentsMargins(14, 12, 14, 12); v.setSpacing(8)
+        self.name = QLabel(); self.name.setObjectName("name")
+        self.sub = QLabel(); self.sub.setObjectName("sub")
+        v.addWidget(self.name); v.addWidget(self.sub)
+        self.room = Room(pet); v.addWidget(self.room, 1)
+        self.bars = {}
+        for n in NEEDS:
+            row = QHBoxLayout()
+            lab = QLabel(NEED_LABEL[n]); lab.setFixedWidth(52)
+            bar = QLabel(); bar.setFixedHeight(14); bar.setMinimumWidth(180)
+            row.addWidget(lab); row.addWidget(bar, 1)
+            v.addLayout(row)
+            self.bars[n] = bar
+        btns = QHBoxLayout()
+        for text, fn in (("Feed", self.do_feed), ("Wash", self.do_wash), ("Play", self.do_play), ("Sleep", self.do_sleep)):
+            b = QPushButton(text); b.clicked.connect(lambda _=False, f=fn: f()); btns.addWidget(b)
+            if text == "Sleep":
+                self.sleep_btn = b
+        v.addLayout(btns)
+        self.msg = QLabel(""); self.msg.setObjectName("sub"); self.msg.setWordWrap(True); v.addWidget(self.msg)
+        more = QPushButton("···"); more.setFixedWidth(40)
+        menu = QMenu(self)
+        menu.addAction("Rename", self.rename); menu.addAction("Story so far", self.story)
+        menu.addSeparator(); menu.addAction("Let it go…", self.let_go)
+        more.setMenu(menu)
+        row = QHBoxLayout(); row.addStretch(1); row.addWidget(more); v.addLayout(row)
+
+    def say(self, t):
+        self.msg.setText(t)
+
+    def do_feed(self):
+        r = self.pet.feed()
+        if r == "yum":
+            self.room.add_fx("food"); self.say("Yum!")
+        else:
+            self.say(r)
+        self.after()
+
+    def do_wash(self):
+        r = self.pet.wash()
+        if r == "splash":
+            for _ in range(5):
+                self.room.add_fx("bubble")
+            self.say("Squeaky clean!")
+        else:
+            self.say(r)
+        self.after()
+
+    def do_play(self):
+        r = self.pet.play()
+        if r == "play":
+            for _ in range(4):
+                self.room.add_fx("star")
+            self.say("That was fun!")
+        else:
+            self.say(r)
+        self.after()
+
+    def do_sleep(self):
+        self.pet.toggle_sleep(); self.after()
+
+    def after(self):
+        self.pet.save(); self.refresh()
+
+    def rename(self):
+        t, ok = QInputDialog.getText(self, "Rename", "New name:", text=self.pet.s["name"])
+        if ok and t.strip():
+            self.pet.s["name"] = t.strip()[:20]; self.after()
+
+    def story(self):
+        s = self.pet.s
+        ev = "\n".join(s.get("events", [])[-8:]) or "Nothing yet. It is still an egg."
+        QMessageBox.information(self, "Story so far", f"{s['name']}\nActive time together: {int(s['total_min'])} min\n\n{ev}")
+
+    def let_go(self):
+        if QMessageBox.question(self, "Let it go", f"Say goodbye to {self.pet.s['name']}? A new egg will appear.") == QMessageBox.StandardButton.Yes:
+            self.pet.let_go(); self.refresh()
+
+    def refresh(self):
+        s = self.pet.s
+        sp = SPECIES[s["species"]]
+        if s["stage"] == "egg":
+            self.name.setText("An egg"); self.sub.setText(f"Keep it warm. It hatches in about {max(1, int(STAGE_MIN['egg'] - s['stage_min']))} min.")
+        else:
+            self.name.setText(s["name"])
+            extra = f" ({s['branch']})" if s["branch"] else ""
+            rare = "  ★ very rare" if s["species"] == RARE else ""
+            self.sub.setText(f"{sp['name']} the {sp['shape'] if sp['shape'] != 'flame' else 'flame'} · {s['stage']}{extra}{rare}")
+        for n, bar in self.bars.items():
+            val = s["needs"][n] if s["stage"] != "egg" else 100
+            bar.setStyleSheet(f"background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 {NEED_COLOR[n]}, stop:{max(0.001, val/100):.3f} {NEED_COLOR[n]}, "
+                              f"stop:{min(1, val/100 + 0.001):.3f} {PANEL}, stop:1 {PANEL}); border: 1px solid {LINE}; border-radius: 4px;")
+        self.sleep_btn.setText("Wake" if s["asleep"] else "Sleep")
+        self.room.update()
+
+
+class Tray:
+    def __init__(self, app, pet, win):
+        self.app, self.pet, self.win = app, pet, win
+        self.icon = QSystemTrayIcon(app)
+        self.icon.setIcon(QIcon(pixmap_of(self.sprite(), 3)))
+        m = QMenu()
+        m.addAction("Open Sunshine Pet", self.show)
+        m.addAction("Quit", app.quit)
+        self.icon.setContextMenu(m)
+        self.icon.activated.connect(lambda r: self.show() if r == QSystemTrayIcon.ActivationReason.Trigger else None)
+        self.last_note = {}
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.icon.show()
+
+    def sprite(self):
+        s = self.pet.s
+        if s["stage"] == "egg":
+            return render_egg(s["species"], 0, 0)
+        return render_pet(s["species"], s["stage"], s["branch"], "happy", 0, False)
+
+    def show(self):
+        self.win.show(); self.win.raise_(); self.win.activateWindow()
+
+    def notify(self, text):
+        try:
+            subprocess.Popen(["notify-send", "-a", "Sunshine Pet", "-i", "sunshine-welcome", "Sunshine Pet", text],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except FileNotFoundError:
+            pass
+
+    def needs_check(self):
+        s = self.pet.s
+        if s["stage"] == "egg" or s["asleep"] or s["gone"]:
+            return
+        now = time.time()
+        for n in self.pet.worst():
+            if s["needs"][n] < 20 and now - self.last_note.get(n, 0) > 1800:
+                self.last_note[n] = now
+                self.notify({"hunger": f"{s['name']} is hungry!", "hygiene": f"{s['name']} needs a wash.", "energy": f"{s['name']} is sleepy.",
+                             "fun": f"{s['name']} is bored.", "affection": f"{s['name']} wants a cuddle."}[n])
+                break
+
+
+def render_sheet(path):
+    """Contact sheet of every species at every stage (used to check the art)."""
+    stages = ["egg", "baby", "child", "teen", "adult"]
+    sheet = QImage(GRID * 3 * len(stages) * 2 + 20, GRID * 3 * (len(SPECIES)) + 20, QImage.Format.Format_ARGB32)
+    sheet.fill(QColor("#2a2f55"))
+    p = QPainter(sheet)
+    for row, sid in enumerate(SPECIES):
+        for col, st in enumerate(stages):
+            img = render_egg(sid, 0, 0.8) if st == "egg" else render_pet(sid, st, None, "happy", col)
+            p.drawImage(10 + col * GRID * 3, 10 + row * GRID * 3, img.scaled(GRID * 3, GRID * 3, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.FastTransformation))
+        for col, br in enumerate(["neat", "scruffy", "ace", "easy", "gremlin"]):
+            img = render_pet(sid, "adult" if br in ("ace", "easy", "gremlin") else "teen", br, "ok", col)
+            p.drawImage(10 + (5 + col) * GRID * 3, 10 + row * GRID * 3, img.scaled(GRID * 3, GRID * 3, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.FastTransformation))
+    p.end()
+    sheet.save(path)
+
+
+def single_instance(name, show):
+    """First instance listens on a local socket; later launches ask it to show its window and exit. Returns the server or None."""
+    from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+    full = f"{name}-{os.getuid()}"
+    probe = QLocalSocket(); probe.connectToServer(full)
+    if probe.waitForConnected(300):
+        probe.write(b"show"); probe.flush(); probe.waitForBytesWritten(300); probe.disconnectFromServer()
+        return None
+    QLocalServer.removeServer(full)
+    srv = QLocalServer(); srv.listen(full)
+    def on_conn():
+        c = srv.nextPendingConnection()
+        if c:
+            c.readyRead.connect(lambda: (c.readAll(), show()))
+            c.disconnected.connect(c.deleteLater)
+    srv.newConnection.connect(on_conn)
+    return srv
+
+
+def main():
+    args = sys.argv[1:]
+    app = QApplication(sys.argv)
+    app.setDesktopFileName("sunshine-pet")
+    app.setStyleSheet(STYLE)
+    app.setFont(QFont("Noto Sans", 10))
+    if "--render-sheet" in args:
+        render_sheet(args[args.index("--render-sheet") + 1]); return 0
+    if "--simulate" in args:
+        pet = Pet(); pet.s = new_pet(args[args.index("--force-species") + 1] if "--force-species" in args else None)
+        for _ in range(int(args[args.index("--simulate") + 1])):
+            for n in pet.tick(1):
+                print(n)
+            if pet.s["stage"] != "egg":
+                if pet.s["needs"]["hunger"] < 40: pet.feed()
+                if pet.s["needs"]["hygiene"] < 40: pet.wash()
+                if pet.s["needs"]["fun"] < 40: pet.play()
+                if pet.s["needs"]["affection"] < 40: pet.pet()
+                if pet.s["needs"]["energy"] < 25 and not pet.s["asleep"]: pet.toggle_sleep()
+        print(pet.s["species"], pet.s["stage"], pet.s["branch"], {k: int(v) for k, v in pet.s["needs"].items()})
+        return 0
+    app.setQuitOnLastWindowClosed(False)
+    pet = Pet()
+    if "--force-species" in args:
+        pet.s = new_pet(args[args.index("--force-species") + 1])
+    win = PetWindow(pet, app)
+    tray = Tray(app, pet, win)
+    server = single_instance("sunshine-pet", tray.show)
+    if server is None:
+        return 0                                     # already running: it was asked to show its window
+
+    last = [time.time()]
+
+    def logic():
+        now = time.time()
+        minutes = min(max(0.0, (now - last[0]) / 60.0), 2.0) * system_flavour()   # a suspended laptop does not starve the pet
+        last[0] = now
+        for n in pet.tick(minutes):
+            tray.notify(n)
+        tray.icon.setIcon(QIcon(pixmap_of(tray.sprite(), 3)))
+        tray.needs_check()
+        pet.save(); win.refresh()
+        if pet.s["gone"] and not win.isVisible():
+            pass
+
+    def frame():
+        win.room.step()
+
+    t1 = QTimer(); t1.timeout.connect(logic); t1.start(10_000)
+    t2 = QTimer(); t2.timeout.connect(frame); t2.start(200)
+    logic()
+    win.refresh()
+    if "--background" not in args or not QSystemTrayIcon.isSystemTrayAvailable():
+        win.show()
+    if pet.s["stage"] == "egg" and pet.s["total_min"] < 0.5:
+        tray.notify("An egg appeared! Keep the app running to warm it.")
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

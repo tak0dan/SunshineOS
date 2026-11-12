@@ -8,7 +8,7 @@ iso=$(ls -t out/*.iso | head -1)
 args=(-enable-kvm -cpu host -smp 4 -m ${MEM:-6144} -machine q35 -name sunshine-gl-$mode
   -drive file="$disk",if=virtio
   -device virtio-vga-gl -display egl-headless,rendernode=/dev/dri/renderD128
-  -monitor unix:test/tmp/mon-$mode.sock,server,nowait -serial file:test/tmp/serial-gl-$mode.log
+  -monitor unix:test/tmp/mon-$mode.sock,server,nowait -qmp unix:test/tmp/qmp-$mode.sock,server,nowait -serial file:test/tmp/serial-gl-$mode.log
   -device qemu-xhci -device usb-tablet -device usb-kbd
   -netdev user,id=n0,hostfwd=tcp::2222-:22 -device virtio-net,netdev=n0)
 [ -z "${NOISO:-}" ] && args+=(-cdrom "$iso" -boot d)

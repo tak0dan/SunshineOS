@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Pods
+Exec=sunshine-pods --background
+OnlyShowIn=KDE;
+X-KDE-autostart-after=panel

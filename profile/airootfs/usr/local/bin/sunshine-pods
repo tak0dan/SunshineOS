@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""Sunshine Pods: battery and controls for AirPods, in the tray and in a small panel.
+
+It reads the status file of the librepods daemon ($XDG_STATE_HOME/librepods/status.json) and sends control verbs with
+`librepods-ctl`. Nothing else talks to Bluetooth. Pair the AirPods once in the normal Bluetooth settings.
+The daemon is based on librepods (kavishdevar) with the modifications of omarchy-pods (thisisgm); both GPL-3.0 / MIT.
+
+usage: sunshine-pods [--background] [--render out.png --status status.json]
+"""
+import json
+import os
+import subprocess
+import sys
+
+from PyQt6.QtCore import QFileSystemWatcher, QRectF, Qt, QTimer
+from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap
+from PyQt6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QSystemTrayIcon, QVBoxLayout, QWidget)
+
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "librepods", "status.json")
+UNKNOWN = -1
+BG = "#0e1422"; PANEL = "#1a202d"; LINE = "#2a3550"; INK = "#efe5d0"; ORANGE = "#ff9654"; GOLD = "#ffc43d"; GREEN = "#8fd16a"; ROSE = "#ff8f7a"
+STYLE = f"""
+QWidget {{ background: {BG}; color: {INK}; font-size: 13px; }}
+QLabel#title {{ font-size: 18px; font-weight: bold; color: {GOLD}; }}
+QLabel#sub {{ color: #a89c88; }}
+QPushButton {{ background: {PANEL}; border: 1px solid {LINE}; border-radius: 8px; padding: 8px 6px; }}
+QPushButton:hover {{ border-color: {ORANGE}; }}
+QPushButton:checked {{ background: {ORANGE}; color: #2a1a0e; border-color: {ORANGE}; font-weight: bold; }}
+"""
+
+
+def read_status():
+    try:
+        with open(STATE) as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def ctl(verb):
+    try:
+        subprocess.Popen(["librepods-ctl", verb], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        pass
+
+
+class Battery(QWidget):
+    """One battery row: label, bar, percent, charging bolt, in-ear dot."""
+
+    def __init__(self, label):
+        super().__init__()
+        self.label = label
+        self.level = UNKNOWN
+        self.charging = False
+        self.in_ear = None
+        self.setFixedHeight(30)
+
+    def set(self, level, charging=False, in_ear=None):
+        self.level, self.charging, self.in_ear = level, charging, in_ear
+        self.update()
+
+    def paintEvent(self, e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(QColor(INK)); p.setFont(QFont("Noto Sans", 10))
+        p.drawText(QRectF(0, 0, 70, 30), Qt.AlignmentFlag.AlignVCenter, self.label)
+        bar = QRectF(76, 8, self.width() - 76 - 90, 14)
+        p.setPen(QPen(QColor(LINE), 1)); p.setBrush(QColor(PANEL)); p.drawRoundedRect(bar, 4, 4)
+        if self.level != UNKNOWN:
+            col = QColor(GREEN if self.level > 40 else GOLD if self.level > 20 else ROSE)
+            p.setPen(Qt.PenStyle.NoPen); p.setBrush(col)
+            p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(4.0, bar.width() * self.level / 100), bar.height()), 4, 4)
+        p.setPen(QColor(INK))
+        txt = "—" if self.level == UNKNOWN else f"{self.level}%"
+        if self.charging:
+            txt += " ⚡"
+        if self.in_ear:
+            txt += " ●"
+        p.drawText(QRectF(bar.right() + 8, 0, 84, 30), Qt.AlignmentFlag.AlignVCenter, txt)
+
+
+class Panel(QWidget):
+    MODES = [("Off", 0, "supports_noise_off"), ("Noise cancel", 1, None), ("Transparency", 2, None), ("Adaptive", 3, "supports_adaptive")]
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Sunshine Pods")
+        self.setMinimumWidth(380)
+        v = QVBoxLayout(self); v.setContentsMargins(16, 14, 16, 14); v.setSpacing(8)
+        self.title = QLabel("AirPods"); self.title.setObjectName("title")
+        self.sub = QLabel(""); self.sub.setObjectName("sub"); self.sub.setWordWrap(True)
+        v.addWidget(self.title); v.addWidget(self.sub)
+        self.left, self.right, self.case = Battery("Left"), Battery("Right"), Battery("Case")
+        self.head = Battery("Headphones")
+        for b in (self.left, self.right, self.case, self.head):
+            v.addWidget(b)
+        self.mode_label = QLabel("Listening mode"); self.mode_label.setObjectName("sub"); v.addWidget(self.mode_label)
+        row = QHBoxLayout(); self.mode_btns = {}
+        for text, mode, _ in self.MODES:
+            b = QPushButton(text); b.setCheckable(True); b.clicked.connect(lambda _=False, m=mode: ctl(["noise:off", "noise:anc", "noise:transparency", "noise:adaptive"][m]))
+            row.addWidget(b); self.mode_btns[mode] = b
+        v.addLayout(row)
+        self.toggles = {}
+        for key, text, on, off in (("conversational_awareness", "Conversation awareness", "ca:on", "ca:off"), ("one_bud_anc_mode", "One-bud noise cancelling", "onebud:on", "onebud:off")):
+            b = QPushButton(text); b.setCheckable(True)
+            b.clicked.connect(lambda checked, a=on, c=off: ctl(a if checked else c))
+            v.addWidget(b); self.toggles[key] = b
+        self.ear_label = QLabel("When you take a pod out"); self.ear_label.setObjectName("sub"); v.addWidget(self.ear_label)
+        er = QHBoxLayout(); self.ear_btns = {}
+        for i, (text, verb) in enumerate((("Pause with one", "ear:one"), ("Pause with both", "ear:both"), ("Never pause", "ear:off"))):
+            b = QPushButton(text); b.setCheckable(True); b.clicked.connect(lambda _=False, vb=verb: ctl(vb)); er.addWidget(b); self.ear_btns[i] = b
+        v.addLayout(er)
+        v.addStretch(1)
+
+    def update_from(self, st):
+        if not st or not st.get("connected", False) and not st.get("device_name"):
+            self.title.setText("AirPods")
+            self.sub.setText("No AirPods yet. Pair them in Settings → Bluetooth, open the case near the computer, and they will show up here."
+                             if st is None else "Waiting for AirPods…")
+            for b in (self.left, self.right, self.case, self.head):
+                b.set(UNKNOWN)
+            self.refresh_visibility({})
+            self.head.setVisible(False)
+            for w in [self.mode_label, self.ear_label] + list(self.mode_btns.values()) + list(self.toggles.values()) + list(self.ear_btns.values()):
+                w.setVisible(False)
+            return
+        for w in [self.ear_label] + list(self.ear_btns.values()):
+            w.setVisible(True)
+        self.title.setText(st.get("model_name") or st.get("device_name") or "AirPods")
+        self.sub.setText(("Connected" if st.get("connected") else "Not connected (battery from nearby broadcast)") +
+                         (f" · {st['device_name']}" if st.get("device_name") else ""))
+        pod = lambda d: (int(d.get("level", UNKNOWN)) if d.get("available", True) else UNKNOWN, bool(d.get("charging")), bool(d.get("in_ear")))
+        self.left.set(*pod(st.get("left", {}))); self.right.set(*pod(st.get("right", {})))
+        c = st.get("case", {}); self.case.set(int(c.get("level", UNKNOWN)) if c.get("available", True) else UNKNOWN, bool(c.get("charging")))
+        h = st.get("headset", {}); self.head.set(int(h.get("level", UNKNOWN)), bool(h.get("charging")))
+        self.refresh_visibility(st)
+        mode = st.get("noise_mode", -1)
+        for m, b in self.mode_btns.items():
+            b.setChecked(m == mode)
+        for key, b in self.toggles.items():
+            b.setChecked(bool(st.get(key)))
+        ear = st.get("ear_detection_behavior", 0)
+        for i, b in self.ear_btns.items():
+            b.setChecked(i == ear)
+
+    def refresh_visibility(self, st):
+        headset = bool(st.get("is_headset"))
+        self.left.setVisible(not headset); self.right.setVisible(not headset); self.case.setVisible(not headset); self.head.setVisible(headset)
+        has_modes = st.get("supports_noise_control", True)
+        self.mode_label.setVisible(has_modes)
+        for text, mode, cap in self.MODES:
+            vis = has_modes and (cap is None or st.get(cap, cap != "supports_adaptive"))
+            self.mode_btns[mode].setVisible(bool(vis))
+        self.toggles["conversational_awareness"].setVisible(bool(st.get("supports_conversational_awareness", st.get("is_pro_series", False))))
+        self.toggles["one_bud_anc_mode"].setVisible(bool(st.get("supports_one_bud_anc", st.get("is_pro_series", False))) and not headset)
+
+
+def tray_icon(st):
+    """A small pod glyph with the lowest known battery level in it."""
+    pm = QPixmap(64, 64); pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm); p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    levels = []
+    if st:
+        for k in ("left", "right"):
+            d = st.get(k, {})
+            if d.get("available", True) and int(d.get("level", UNKNOWN)) >= 0:
+                levels.append(int(d["level"]))
+        h = st.get("headset", {})
+        if int(h.get("level", UNKNOWN)) >= 0:
+            levels.append(int(h["level"]))
+    p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor("#fdf0dc")); p.drawEllipse(QRectF(10, 6, 30, 34)); p.drawRoundedRect(QRectF(26, 22, 12, 34), 5, 5)
+    if levels:
+        low = min(levels)
+        p.setBrush(QColor(GREEN if low > 40 else GOLD if low > 20 else ROSE)); p.drawRoundedRect(QRectF(4, 52, 56 * low / 100, 8), 3, 3)
+    p.end()
+    return QIcon(pm)
+
+
+def single_instance(name, show):
+    """First instance listens on a local socket; later launches ask it to show its window and exit. Returns the server or None."""
+    from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+    full = f"{name}-{os.getuid()}"
+    probe = QLocalSocket(); probe.connectToServer(full)
+    if probe.waitForConnected(300):
+        probe.write(b"show"); probe.flush(); probe.waitForBytesWritten(300); probe.disconnectFromServer()
+        return None
+    QLocalServer.removeServer(full)
+    srv = QLocalServer(); srv.listen(full)
+    def on_conn():
+        c = srv.nextPendingConnection()
+        if c:
+            c.readyRead.connect(lambda: (c.readAll(), show()))
+            c.disconnected.connect(c.deleteLater)
+    srv.newConnection.connect(on_conn)
+    return srv
+
+
+def main():
+    args = sys.argv[1:]
+    app = QApplication(sys.argv)
+    app.setDesktopFileName("sunshine-pods")
+    app.setStyleSheet(STYLE)
+    app.setFont(QFont("Noto Sans", 10))
+    panel = Panel()
+    if "--render" in args:                                   # picture of the panel for a given status file (testing)
+        st = json.load(open(args[args.index("--status") + 1])) if "--status" in args else None
+        panel.update_from(st); panel.resize(400, 460); panel.show(); app.processEvents()
+        panel.grab().save(args[args.index("--render") + 1]); return 0
+    app.setQuitOnLastWindowClosed(False)
+    server = single_instance("sunshine-pods", lambda: (panel.show(), panel.raise_(), panel.activateWindow()))
+    if server is None:
+        return 0
+    tray = QSystemTrayIcon(app)
+    menu = QMenu(); menu.addAction("Open", lambda: (panel.show(), panel.raise_(), panel.activateWindow())); menu.addAction("Quit", app.quit)
+    tray.setContextMenu(menu)
+    tray.activated.connect(lambda r: (panel.show(), panel.raise_()) if r == QSystemTrayIcon.ActivationReason.Trigger else None)
+
+    def refresh():
+        st = read_status()
+        panel.update_from(st)
+        connected = bool(st and (st.get("connected") or st.get("device_name")))
+        tray.setIcon(tray_icon(st))
+        tray.setToolTip(((st.get("model_name") or st.get("device_name") or "AirPods") if connected else "AirPods: not connected"))
+        if connected and QSystemTrayIcon.isSystemTrayAvailable():
+            tray.show()
+        else:
+            tray.hide()                                      # nothing to show until AirPods are around
+
+    watcher = QFileSystemWatcher()
+    d = os.path.dirname(STATE)
+    os.makedirs(d, exist_ok=True)
+    watcher.addPath(d)
+    if os.path.exists(STATE):
+        watcher.addPath(STATE)
+
+    def changed(_path):
+        if os.path.exists(STATE) and STATE not in watcher.files():
+            watcher.addPath(STATE)
+        refresh()
+    watcher.directoryChanged.connect(changed); watcher.fileChanged.connect(changed)
+    t = QTimer(); t.timeout.connect(refresh); t.start(15000)  # safety net: a missed file event is repaired within 15 s
+    refresh()
+    if "--background" not in args:
+        panel.show()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

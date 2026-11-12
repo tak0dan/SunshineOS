@@ -110,3 +110,30 @@ sub(ac, "apply_term() {\n", '''apply_konsole() {
 apply_term() {
   apply_konsole &
 ''')
+
+# 10. Sunshine Toolbox and Sunshine Pet float and open centred, like Sunshine Welcome
+ru = os.path.join(cfg, "hypr/hyprland/rules.lua")
+anchor = 'hl.window_rule({match = {class = "^(sunshine-welcome)$" },          size = {"700", "600"} })\n'
+sub(ru, anchor, anchor + '''hl.window_rule({match = {class = "^(sunshine-toolbox)$" },          float = true})
+hl.window_rule({match = {class = "^(sunshine-toolbox)$" },          center = true})
+hl.window_rule({match = {class = "^(sunshine-toolbox)$" },          size = {"700", "640"} })
+hl.window_rule({match = {class = "^(sunshine-pet)$" },              float = true})
+hl.window_rule({match = {class = "^(sunshine-pet)$" },              size = {"380", "560"} })
+''')
+
+# 11. Sunshine Pet starts in the tray (its window opens from the tray icon)
+sub(os.path.join(cfg, "hypr/hyprland/execs.lua"), "    hl.exec_cmd(\"sleep 7; hyprctl dispatch 'hl.dsp.focus({workspace=1})'\")\n",
+    "    hl.exec_cmd(\"sleep 7; hyprctl dispatch 'hl.dsp.focus({workspace=1})'\")\n    hl.exec_cmd(\"/usr/local/bin/sunshine-pet --background\")\n"
+    "    hl.exec_cmd(\"systemctl --user start librepods.service\")\n"
+    "    hl.exec_cmd(\"/usr/local/bin/sunshine-pods --background\")\n"
+    "    hl.exec_cmd(\"kdeconnect-indicator\")\n")
+
+# 12. float rules for the pods panel as well
+sub(ru, 'hl.window_rule({match = {class = "^(sunshine-pet)$" },              size = {"380", "560"} })\n',
+    'hl.window_rule({match = {class = "^(sunshine-pet)$" },              size = {"380", "560"} })\nhl.window_rule({match = {class = "^(sunshine-pods)$" },             float = true})\nhl.window_rule({match = {class = "^(sunshine-pods)$" },             size = {"420", "480"} })\n')
+
+# 13. wider Welcome window (three columns of tiles)
+sub(os.path.join(cfg, "hypr/hyprland/rules.lua"), 'class = "^(sunshine-welcome)$" },          size = {"700", "600"} })', 'class = "^(sunshine-welcome)$" },          size = {"880", "640"} })')
+
+# 14. no Hyprland news / donation pop-ups (they appear on the second login and look like an error to a new user)
+sub(os.path.join(cfg, "hypr/hyprland/general.lua"), "    misc = {", "    ecosystem = { no_update_news = true, no_donation_nag = true },\n    misc = {")

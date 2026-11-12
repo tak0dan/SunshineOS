@@ -64,6 +64,13 @@ SECTIONS = [
         ("🌐  Network", "Wi-Fi, cable, VPN", lambda: run(["kcmshell6", "kcm_networkmanagement"]), have("kcmshell6")),
         ("⚙  System settings", "Look, keyboard, language, sound", lambda: run(["systemsettings"]), have("systemsettings")),
     ]),
+    ("Devices", [
+        ("📱  Phone", "Pair a phone with KDE Connect: files, notifications, clipboard", lambda: run(["kdeconnect-app"]), have("kdeconnect-app")),
+        ("🎧  AirPods", "Battery of each pod and the case, noise control", lambda: run(["sunshine-pods"]), have("sunshine-pods")),
+    ]),
+    ("Fun", [
+        ("🐣  Sunshine Pet", "Feed it, wash it, play with it", lambda: run(["sunshine-pet"]), have("sunshine-pet")),
+    ]),
     ("Apps", [
         ("🛍  Sunshine Store", "pacman, AUR and Flatpak in one place", lambda: run(["sunshine-store"]), have("sunshine-store")),
         ("🌐  Enable Flathub", "Thousands more apps",
@@ -92,6 +99,7 @@ class Toolbox(QWidget):
         head.addLayout(col, 1)
         outer.addLayout(head)
         area = QScrollArea(); area.setWidgetResizable(True)
+        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         inner = QWidget(); lay = QVBoxLayout(inner); lay.setContentsMargins(0, 0, 8, 0)
         for title, tools in SECTIONS:
             shown = [x for x in tools if x[3]]
@@ -103,7 +111,7 @@ class Toolbox(QWidget):
                 b = QPushButton(f"{label}\n{desc}")
                 b.setCursor(Qt.CursorShape.PointingHandCursor)
                 b.clicked.connect(lambda _=False, f=fn: f())
-                g.addWidget(b, i // 2, i % 2)
+                g.addWidget(b, i, 0)
             lay.addLayout(g)
         lay.addStretch(1)
         area.setWidget(inner)

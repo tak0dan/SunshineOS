@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Pet
+Comment=Your virtual pet: feed it, wash it, play with it
+Exec=sunshine-pet
+Icon=/usr/share/sunshine/logos/pet.png
+Categories=Game;
+Terminal=false
+StartupWMClass=sunshine-pet

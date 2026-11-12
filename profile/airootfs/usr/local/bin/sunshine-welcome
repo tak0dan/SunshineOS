@@ -44,7 +44,7 @@ class Welcome(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Welcome to Sunshine OS")
-        self.setMinimumSize(640, 560)
+        self.setMinimumSize(860, 560)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(32, 28, 32, 20)
         outer.setSpacing(14)
@@ -85,10 +85,13 @@ class Welcome(QWidget):
             ("🌐  Enable Flathub\nThousands more apps", self.flathub),
             ("⚙  Settings\nLook, keyboard, language, network", lambda: run(["systemsettings"])),
             ("🧰  Toolbox\nHealth check, clean up, repair", lambda: run(["sunshine-toolbox"])),
+            ("📱  Phone\nPair a phone: files, notifications", lambda: run(["kdeconnect-app"])),
+            ("🎧  AirPods\nBattery and noise control", lambda: run(["sunshine-pods"])),
+            ("🐣  Pet\nYour virtual pet", lambda: run(["sunshine-pet"])),
             ("❓  Help && tips\nWhat to do if something is wrong", self.tips),
         ]
         for i, (label, fn) in enumerate(items):
-            grid.addWidget(self.button(label, fn), i // 2, i % 2)
+            grid.addWidget(self.button(label, fn), i // 3, i % 3)
         outer.addLayout(grid)
         outer.addStretch(1)
 

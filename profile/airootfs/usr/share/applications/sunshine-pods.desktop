@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=AirPods
+Comment=Battery and noise control for AirPods
+Exec=sunshine-pods
+Icon=audio-headphones
+Categories=AudioVideo;Settings;
+Terminal=false
+StartupWMClass=sunshine-pods

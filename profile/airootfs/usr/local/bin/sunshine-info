@@ -12,7 +12,8 @@ row "Session"  "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-none (text console / s
 row "Shell"    "$(basename "${SHELL:-?}")"
 row "Packages" "$(pacman -Qq 2>/dev/null | wc -l) installed, $(pacman -Qqm 2>/dev/null | wc -l) from AUR/other"
 if [ "$(findmnt -no FSTYPE /)" = btrfs ] && [ -e /etc/snapper/configs/root ]; then
-  n=$(sudo -n snapper -c root list --columns number 2>/dev/null | grep -c '^ *[1-9]'); row "Snapshots" "${n:-?} restore point(s) (sunshine-snapshot list)"
+  n=$(sudo -n snapper -c root list --columns number 2>/dev/null | grep '^ *[1-9]' | wc -l); [ "$n" -gt 0 ] || n="?"
+  row "Snapshots" "$n restore point(s) (sunshine-snapshot list)"
 else row "Snapshots" "not available (needs btrfs)"; fi
 row "Last update" "$(grep -a 'starting full system upgrade' /var/log/pacman.log 2>/dev/null | tail -1 | sed 's/^\[\([^]]*\)\].*/\1/')"
 echo

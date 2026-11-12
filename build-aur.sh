@@ -8,6 +8,7 @@ CACHE=${SUNSHINE_CACHE:-$HOME/Projects/SunshineOS-cache}   # downloads are kept 
 mkdir -p repo aur pkgs "$CACHE/pacman" "$CACHE/aur-src"
 docker run --rm -v "$CACHE/pacman:/var/cache/pacman/pkg" -v "$CACHE/aur-src:/srcdest" -v "$PWD/repo:/repo" -v "$PWD/aur:/aur" -v "$PWD/pkgs:/pkgs:ro" sunshineos-builder bash -c '
   set -e
+  pacman -Sy --noconfirm >/dev/null 2>&1
   id builder &>/dev/null || useradd -m builder
   echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
   chown -R builder /aur /repo /srcdest

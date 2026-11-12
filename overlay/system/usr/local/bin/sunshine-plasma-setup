@@ -34,7 +34,7 @@ var p=panels()[0];
 for (var id of p.widgetIds) p.widgetById(id).remove();
 p.height=48; p.floating=false; p.lengthMode="fill";
 p.addWidget("org.kde.plasma.panelspacer");
-var k=p.addWidget("org.kde.plasma.kickoff"); k.currentConfigGroup=["General"]; k.writeConfig("icon","sunshine-menu"); k.writeConfig("favoritesDisplay",1); k.writeConfig("applicationsDisplay",0); k.writeConfig("favorites",L.concat(["applications:sunshine-toolbox.desktop","applications:systemsettings.desktop"]));
+var k=p.addWidget("org.kde.plasma.kickoff"); k.currentConfigGroup=["General"]; k.writeConfig("icon","sunshine-menu"); k.writeConfig("favoritesDisplay",0); k.writeConfig("applicationsDisplay",0); k.writeConfig("favorites",L.concat(["applications:sunshine-toolbox.desktop","applications:systemsettings.desktop"]));
 var t=p.addWidget("org.kde.plasma.icontasks"); t.currentConfigGroup=["General"]; t.writeConfig("launchers",L);
 p.addWidget("org.kde.plasma.panelspacer");
 p.addWidget("org.kde.plasma.systemtray");

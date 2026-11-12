@@ -262,3 +262,6 @@ btrfs-assistant
 inotify-tools
 paru-bin
 lsd
+librepods
+kdeconnect
+sshfs
