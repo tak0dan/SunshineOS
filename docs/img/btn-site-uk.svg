@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="230" height="56" viewBox="0 0 230 56" role="img" aria-label="Відкрити сайт">
+<rect x="1" y="1" width="228" height="54" fill="#151024" stroke="#ffb12e" stroke-width="2"/>
+<path d="M5 22V2L22 12L5 22Z" fill="#f3e6d0" transform="translate(20,15) scale(.9)"/>
+<text x="56" y="34" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="16" font-weight="700" fill="#f3e6d0">Відкрити сайт</text>
+</svg>
