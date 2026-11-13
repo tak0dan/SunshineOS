@@ -19,3 +19,6 @@ __pycache__/
 *.iso
 pkgs/qt6-avif-image-plugin/
 pkgs/ttf-material-symbols-variable-git/
+
+# release numbering anchor date (kept local, not published)
+ANCHOR

@@ -53,7 +53,10 @@ SITE_DIR=<clone of the site repo> DOWNLOAD_URL=<Worker URL> JSON_ONLY=1 tools/re
 ```
 
 - `worker/iso-download.js` is the Worker's code (deploy it in the Cloudflare dashboard; it reads the site's `release.json`).
-- The published name is `SunshineOS_<version>_Release_<date>.iso`; the version comes from the `VERSION` file.
+- The published name is `SunshineOS_<D>.<M>.<months>.<big>.<small>_<Release|Beta|Testing>_<date>.iso`:
+  `<D>.<M>` and `<months>` come from a numbering anchor date kept in a local, git-ignored `ANCHOR` file (`<D>.<M>` is its day and
+  month, `<months>` the whole months from it to the release date); `<big>.<small>` are the generation counters in the `VERSION`
+  file; the channel is `Release` unless `SUNSHINE_CHANNEL=Beta|Testing`. Only `Release` files are served by the download button.
 - To join the parts by hand: `cat SunshineOS_*.iso.part* > SunshineOS.iso`, then `sha256sum -c` against the `.sha256` file.
 
 ## Layout

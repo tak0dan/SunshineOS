@@ -18,9 +18,35 @@ async function newest(ctx) {
   return list[0];
 }
 
+// GitHub's answer to a request from Cloudflare's shared network is sometimes an error or an empty body (it never happens from a normal
+// connection). Check status, declared length and that the first chunk is not empty, and retry before any byte has been sent on.
+async function openSlice(s) {
+  const expected = s.to - s.from + 1;
+  let last;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    try {
+      const r = await fetch(s.url, { headers: s.whole ? {} : { Range: "bytes=" + s.from + "-" + s.to }, redirect: "follow" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const len = Number(r.headers.get("content-length"));
+      if (len && len !== expected) throw new Error("length " + len + " instead of " + expected);
+      const reader = r.body.getReader();
+      const first = await reader.read();
+      if (first.done || !first.value || !first.value.byteLength) throw new Error("empty body");
+      reader.releaseLock();
+      return { body: r.body, first: first.value };
+    } catch (e) {
+      last = e; console.error("part request failed (attempt " + attempt + "): " + e.message);
+      await new Promise(res => setTimeout(res, 200 * attempt));
+    }
+  }
+  throw last;
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
+    // never stream the ISO into a frame (the Cloudflare dashboard preview does that and freezes the editor)
+    if (request.headers.get("Sec-Fetch-Dest") === "iframe") return new Response("Sunshine OS download endpoint: open this address directly to download the ISO.\n", { status: 200 });
     let rel;
     try { rel = await newest(ctx); } catch (e) { return new Response("No ISO is published yet (" + e.message + ")", { status: 503 }); }
     const total = rel.parts.reduce((n, p) => n + p.size, 0);
@@ -56,9 +82,9 @@ export default {
     ctx.waitUntil((async () => {
       try {
         for (const s of slices) {
-          const r = await fetch(s.url, { headers: s.whole ? {} : { Range: "bytes=" + s.from + "-" + s.to }, redirect: "follow" });
-          if (!r.ok) throw new Error("part answered HTTP " + r.status);
-          await r.body.pipeTo(writable, { preventClose: true });
+          const part = await openSlice(s);
+          const w = writable.getWriter(); await w.write(part.first); w.releaseLock();
+          await part.body.pipeTo(writable, { preventClose: true });
         }
         await writable.close();
       } catch (e) { try { await writable.abort(e); } catch (_) {} }
