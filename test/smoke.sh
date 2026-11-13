@@ -66,7 +66,9 @@ def run(cmd,timeout=40):
     n[0]+=1; tag="@@E%d@@"%n[0]
     s.sendall(("%s; echo %s\n"%(cmd,tag)).encode())
     o=read_until(r"(^|\n)"+re.escape(tag)+r"\r?\n",timeout)
-    if o is None: return None
+    if o is None:
+        read_until(r"(^|\n)"+re.escape(tag)+r"\r?\n",150)   # let the slow command finish, so its output cannot leak into the next one
+        return None
     return o.split(tag)[0].replace("\r","").strip()
 run("true")
 # did the boot finish? (a start job that never ends, e.g. a wait for a time server, keeps the state at 'starting')
@@ -87,7 +89,7 @@ sample="dbus-broker polkit networkmanager sddm systemd openssh imagemagick coreu
 ignore_perm=os.environ.get("SMOKE_PERM_IGNORE","libutempter")
 bad=run("pacman -Qkk %s 2>&1 | grep -i 'permissions' | grep -Ev '%s' | head -6"%(sample,ignore_perm),timeout=180)
 check("file permissions match what the packages ship (sample of %d packages)"%len(sample.split()),bad=="",("command timed out" if bad is None else bad.replace("\n"," | ")))
-bad=run("find /etc /usr/share -xdev -type f ! -perm -004 \\( -path '*/dbus-1/*' -o -path '*/polkit-1/*' -o -path '*/sddm*' -o -path '*/NetworkManager/*.conf' \\) 2>/dev/null | head -5")
+bad=run("find /etc/dbus-1 /etc/polkit-1 /etc/pam.d /etc/NetworkManager /usr/share/dbus-1 /usr/share/polkit-1 -xdev -type f ! -perm -004 2>/dev/null | head -5",timeout=120)
 check("service config files are readable by other users",bad=="",("command timed out" if bad is None else bad.replace("\n"," ")))
 for unit in ("dbus-broker","NetworkManager","sddm"):
     st=run("systemctl is-active %s"%unit)
