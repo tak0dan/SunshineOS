@@ -44,8 +44,17 @@ Run it before every release build.
 
 ## Publishing
 
-`tools/release-sourceforge.sh` uploads the ISO from `out/` to SourceForge as one file, checks the public link and records the
-release in the website's `release.json` (`SITE_DIR=<clone of the site repo>`).
+The ISO is stored on GitHub Releases in parts (GitHub refuses files of 2 GiB or more) and a Cloudflare Worker serves the newest
+release as one file, so the website's download button is an ordinary link.
+
+```
+tools/release-github.sh     # split out/*.iso into parts and create the GitHub Release (DRY=1 to preview)
+SITE_DIR=<clone of the site repo> DOWNLOAD_URL=<Worker URL> JSON_ONLY=1 tools/release-github.sh   # write the release into the site's release.json
+```
+
+- `worker/iso-download.js` is the Worker's code (deploy it in the Cloudflare dashboard; it reads the site's `release.json`).
+- The published name is `SunshineOS_<version>_Release_<date>.iso`; the version comes from the `VERSION` file.
+- To join the parts by hand: `cat SunshineOS_*.iso.part* > SunshineOS.iso`, then `sha256sum -c` against the `.sha256` file.
 
 ## Layout
 
