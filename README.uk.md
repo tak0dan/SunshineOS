@@ -118,7 +118,7 @@ Sunshine OS поєднує свободу й свіжість Arch Linux із з
 
 ## Як працює інсталятор
 
-Інсталятор — це Calamares із власними модулями Sunshine. `sunshine-install` копію, не потребуючи мережі, живу систему на диск; решту роблять кроки `shellprocess`, описані в `profile/airootfs/etc/calamares/`.
+Інсталятор — це Calamares із власними модулями Sunshine. `sunshine-install` копіює живу систему на диск без мережі; решту роблять кроки `shellprocess`, описані в `profile/airootfs/etc/calamares/`.
 
 ```mermaid
 flowchart LR
