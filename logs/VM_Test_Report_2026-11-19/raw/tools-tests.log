@@ -1,0 +1,316 @@
+=== OS TOOLS TEST 2026-11-19T16:09:21+00:00 ===
+
+### /usr/local/bin/sunshine-identity check
+Identity OK: Sunshine OS
+[rc=0]
+
+### /usr/local/bin/sunshine-info
+[38;5;220m[1m☀ Sunshine OS[0m
+[38;5;220mSystem      [0m Sunshine OS (sunshineos, based on arch, rolling)
+[38;5;220mIdentity    [0m intact
+[38;5;220mKernel      [0m 7.3.4-arch1-2
+[38;5;220mBoot        [0m BIOS, overlay root
+[38;5;220mSession     [0m none (text console / ssh) 
+[38;5;220mShell       [0m fish
+[38;5;220mPackages    [0m 1206 installed, 1206 from AUR/other
+[38;5;220mSnapshots   [0m not available (needs btrfs)
+[38;5;220mLast update [0m 
+
+12System:
+  12Kernel 7.3.4-arch1-2 12arch x86_64 12bits 64 12compiler gcc 12v 16.2.1
+  12Console N/A 12Distro Sunshine OS
+12Machine:
+  12Type Virtualbox 12System innotek GmbH 12product VirtualBox 12v 1.2 12serial <superuser required>
+  12Mobo Oracle 12model VirtualBox 12v 1.2 12serial <superuser required> 12Firmware BIOS
+    12vendor innotek GmbH 12v VirtualBox 12date 12/01/2006
+12CPU:
+  12Info quad core 12model Intel Core i5-4590 12bits 64 12type MCP 12arch Haswell 12rev 3 12cache 12L1 256 KiB
+    12L2 1024 KiB 12L3 24 MiB
+  12Speed (MHz) 12avg 3292 12min/max N/A 12cores 121 3292 122 3292 123 3292 124 3292 12bogomips 26339
+  12Flags-basic avx avx2 ht lm nx pae sse sse2 sse3 sse4_1 sse4_2 ssse3
+12Graphics:
+  12Device-1 InnoTek Systemberatung GmbH VirtualBox Graphics Adapter 12vendor VMware 12driver vboxvideo
+    12v kernel 12bus-ID 00:02.0
+  12Display unspecified 12server X.org 12v 1.21.1.26 12with Xwayland 12v 24.1.15 12driver 12X
+    12loaded modesetting 12gpu vboxvideo 12tty 80x40 12resolution 800x600
+  12API OpenGL 12Message GL data unavailable in console, glxinfo missing.
+  12Info 12Tools 12de kscreen-console,kscreen-doctor 12x11 xprop
+12Audio:
+  12Device-1 Intel 82801AA AC97 Audio 12driver snd_intel8x0 12v kernel 12bus-ID 00:05.0
+  12API ALSA 12v k7.3.4-arch1-2 12status kernel-api
+  12Server-1 sndiod 12v N/A 12status off
+  12Server-2 PipeWire 12v 1.6.11 12status active (process)
+12Network:
+  12Device-1 Intel 82540EM Gigabit Ethernet 12driver e1000 12v kernel 12port d020 12bus-ID 00:03.0
+  12IF enp0s3 12state up 12speed 1000 Mbps 12duplex full 12mac <filter>
+  12Device-2 Intel 82371AB/EB/MB PIIX4 ACPI 12type network bridge 12driver piix4_smbus 12v N/A 12port N/A
+    12bus-ID 00:07.0
+12Drives:
+  12Local Storage 12total 20 GiB 12used 0 KiB (0.0%)
+  12ID-1 /dev/sda 12vendor VirtualBox 12model VBOX HARDDISK 12size 20 GiB
+12Partition:
+  12ID-1 / 12size 4 GiB 12used 47 MiB (1.1%) 12fs overlay 12source ERR-102
+12Swap:
+  12ID-1 swap-1 12type zram 12size 2.4 GiB 12used 0 KiB (0.0%) 12dev /dev/zram0
+12Sensors:
+  12Src lm-sensors+/sys 12Message No sensor data found using /sys/class/hwmon or lm-sensors.
+12Info:
+  12Memory 12total 5 GiB 12available 4.79 GiB 12used 1.43 GiB (29.8%)
+  12Processes 288 12Uptime 2m 12Init systemd
+  12Packages 1206 12Compilers 12clang 23.1.5 12gcc 16.2.1 12Client shell wrapper 12v 5.3.20-release
+    12inxi 3.3.41
+[rc=0]
+
+### timeout 60 /usr/local/bin/sunshine-diagnose --print
+Sunshine OS diagnosis, Thu Nov 19 16:09:22 UTC 2026
+Kernel: 7.3.4-arch1-2   Uptime: up 2 minutes
+
+=== Performance ===
+Load: 0.92 0.82 0.34
+               total        used        free      shared  buff/cache   available
+Mem:           4.8Gi       1.4Gi       1.1Gi        96Mi       2.6Gi       3.4Gi
+    PID COMMAND         %CPU %MEM
+    952 kwin_wayland    22.7  7.5
+   1813 VBoxService     13.9  0.0
+    959 plasmashell      8.8 13.2
+   1934 flatpak-system-  3.7  0.3
+    606 systemd-nsresou  1.8  0.1
+
+=== Temperatures ===
+
+=== Disk space ===
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sr0       iso9660   3.3G  3.3G     0 100% /run/archiso/bootmnt
+/dev/loop0     squashfs  3.2G  3.2G     0 100% /run/archiso/airootfs
+airootfs       overlay   4.0G   48M  4.0G   2% /
+
+airootfs       628220   700 627520    1% /
+
+=== File system sanity ===
+overlay rw,relatime,lowerdir=/run/archiso/airootfs,upperdir=/run/archiso/cowspace/persistent_/x86_64/upperdir,workdir=/run/archiso/cowspace/persistent_/x86_64/workdir,uuid=on
+
+=== Packages ===
+warning: database file for 'sunshine' does not exist (use '-Sy' to download)
+warning: database file for 'core' does not exist (use '-Sy' to download)
+warning: database file for 'extra' does not exist (use '-Sy' to download)
+warning: database file for 'multilib' does not exist (use '-Sy' to download)
+warning: database file for 'sunshine' does not exist (use '-Sy' to download)
+warning: database file for 'core' does not exist (use '-Sy' to download)
+warning: database file for 'extra' does not exist (use '-Sy' to download)
+warning: database file for 'multilib' does not exist (use '-Sy' to download)
+warning: database file for 'sunshine' does not exist (use '-Sy' to download)
+warning: database file for 'core' does not exist (use '-Sy' to download)
+warning: database file for 'extra' does not exist (use '-Sy' to download)
+warning: database file for 'multilib' does not exist (use '-Sy' to download)
+Installed: 1206   Explicit: 298   Foreign (AUR): 1206
+Pending updates: 9
+
+=== Package integrity ===
+warning: database file for 'sunshine' does not exist (use '-Sy' to download)
+warning: database file for 'core' does not exist (use '-Sy' to download)
+warning: database file for 'extra' does not exist (use '-Sy' to download)
+warning: database file for 'multilib' does not exist (use '-Sy' to download)
+No database errors have been found!
+File check (changed or missing files, first 15):
+amd-ucode /boot/amd-ucode.img
+bind /var/named/127.0.0.zone
+bind /var/named/localhost.ip6.zone
+bind /var/named/localhost.zone
+cups /var/cache/cups/rss/
+cups /var/spool/cups/tmp/
+intel-ucode /boot/intel-ucode.img
+memtest86+ /boot/memtest86+/
+memtest86+ /boot/memtest86+/memtest.bin
+memtest86+-efi /boot/memtest86+/
+memtest86+-efi /boot/memtest86+/memtest86ia32.efi
+memtest86+-efi /boot/memtest86+/memtest86x64.efi
+
+=== Conflicts and orphans ===
+Orphans: 0
+.pacnew/.pacsave files:
+
+=== Services and daemons ===
+Failed units above (none listed = none failed)
+
+=== Boot (initramfs / dracut) ===
+
+=== Snapshots ===
+
+=== Journal: errors this boot ===
+Nov 19 16:07:39 sunshineos kwin_wayland[952]: Modeset failed: Invalid argument
+Nov 19 16:07:39 sunshineos kwin_wayland[952]: Modeset failed: Invalid argument
+Nov 19 16:07:39 sunshineos kwin_wayland[952]: Modeset failed: Invalid argument
+Nov 19 16:07:39 sunshineos kwin_wayland[952]: Modeset failed: Invalid argument
+Nov 19 16:07:39 sunshineos kwin_wayland[952]: Modeset failed: Invalid argument
+Nov 19 16:07:41 sunshineos librepods[1472]:  BLE scan error occurred: QBluetoothDeviceDiscoveryAgent::InputOutputError 
+Nov 19 16:08:33 sunshineos VBoxService[765]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:08:33 sunshineos VBoxService[765]: pam_loginuid(login:session): set_loginuid failed
+Nov 19 16:09:21 sunshineos VBoxService[765]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:09:21 sunshineos VBoxService[765]: pam_loginuid(login:session): set_loginuid failed
+Nov 19 16:09:21 sunshineos VBoxService[765]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:09:21 sunshineos VBoxService[765]: pam_loginuid(login:session): set_loginuid failed
+[rc=0]
+
+### /usr/local/bin/sunshine-snapshot status
+File system: overlay  ->  timeshift
+Set up: no
+[rc=0]
+
+### /usr/local/bin/sunshine-snapshot backend
+timeshift (overlay)
+[rc=0]
+
+### timeout 120 sudo -n /usr/local/bin/sunshine-doctor --quiet
+  [38;5;220m![0m package databases missing or damaged: sunshine core extra multilib
+  [31m✘[0m core packages missing: sunshine-base
+
+[31m[1m1 problem(s) found[0m — run: sunshine-doctor --fix
+[rc=1]
+
+### doctor --fix
+[38;5;220m[1mSunshine OS doctor[0m  [2m(check + repair)[0m
+
+[38;5;220m[1m☀ Identity[0m
+  [32m✔[0m this is Sunshine OS (Sunshine OS)
+
+[38;5;220m[1m☀ Package manager[0m
+  [32m✔[0m no lock file
+  [32m✔[0m package keyring present
+  [32m✔[0m package database consistent
+  [38;5;220m![0m package databases missing or damaged: sunshine core extra multilib
+  [32m↺ fixed:[0m package databases downloaded again
+  [32m✔[0m no partial upgrade detected
+  [32m✔[0m recent cached packages are intact
+  [31m✘[0m core packages missing: sunshine-base
+  [32m↺ fixed:[0m reinstalled: sunshine-base
+  [32m✔[0m no pending .pacnew files
+  [32m✔[0m [sunshine] repository is configured
+
+[38;5;220m[1m☀ Desktop[0m
+
+[38;5;220m[1m☀ Boot[0m
+  [32m✔[0m live session: boot files are checked on the installed system
+
+[38;5;220m[1m☀ System[0m
+  [32m✔[0m clock is synchronised
+  [32m✔[0m swap is active
+  [32m✔[0m no failed services
+  [32m✔[0m root disk 3% used
+  [32m✔[0m network service running
+  [32m✔[0m running kernel matches installed modules
+
+[38;5;220m[1m☀ Restore points[0m
+  [32m✔[0m live session: restore points are checked on the installed system
+
+[31m[1m1 problem(s) found[0m
+[rc=1]
+--- boot files after fix
+total 0
+
+### sunshine-fix-pacman
+
+[38;5;220m[1m☀ Lock file[0m
+[32m✔ ☕ no lock[0m
+
+[38;5;220m[1m☀ pacman.conf[0m
+[32m✔ ☕ pacman.conf has core and extra[0m
+
+[38;5;220m[1m☀ Keyring[0m
+[32m✔ ☕ keyring populated[0m
+
+[38;5;220m[1m☀ Mirrors[0m
+[32m✔ ☕ mirrors ranked (rate-mirrors)[0m
+
+[38;5;220m[1m☀ Sunshine repository[0m
+[sunshine] repository OK
+adding Chaotic-AUR: keyring and mirror list
+[chaotic-aur] repository added
+[32m✔ ☕ [sunshine] repository is configured[0m
+
+[38;5;220m[1m☀ Databases[0m
+[32m✔ ☕ package databases synchronised[0m
+
+[38;5;220m[1m☀ Interrupted updates and cached packages[0m
+[32m✔ ☕ archlinux-keyring is current[0m
+[32m✔ ☕ package database is consistent[0m
+
+[38;5;220m[1m☀ AUR helper[0m
+[32m✔ ☕ paru works[0m
+[32m✔ ☕ yay works[0m
+
+Done. Try the update again.
+[rc=0]
+
+### sunshine-restore-visuals --offline
+offline: applying the themes that are already installed
+
+[38;5;220m[1m☀ Applying[0m
+/usr/local/bin/sunshine-restore-visuals: line 28:  3474 Aborted                    (core dumped) plasma-apply-colorscheme SunshineDark > /dev/null 2>&1
+/usr/local/bin/sunshine-restore-visuals: line 29:  3478 Aborted                    (core dumped) plasma-apply-desktoptheme Sunshine > /dev/null 2>&1
+[32m✔ ☕ visuals restored[0m
+[38;5;220mAll done. Have a warm cup of tea and enjoy the sunshine ☀️🍵[0m
+[rc=0]
+--- theme files after restore
+=== /home/sunshine/.config/gtk-3.0/settings.ini
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-button-images=true
+gtk-cursor-blink=true
+gtk-cursor-blink-time=1000
+gtk-cursor-theme-name=breeze_cursors
+gtk-cursor-theme-size=24
+gtk-decoration-layout=:minimize,maximize,close
+gtk-enable-animations=false
+gtk-font-name=Noto Sans,  10
+gtk-icon-theme-name=Sunshine-orange-dark
+gtk-menu-images=true
+gtk-modules=colorreload-gtk-module:appmenu-gtk-module
+gtk-primary-button-warps-slider=true
+gtk-shell-shows-menubar=1
+gtk-sound-theme-name=ocean
+gtk-theme-name=Breeze-Dark
+gtk-toolbar-style=3
+gtk-xft-dpi=98304
+=== /home/sunshine/.config/gtk-4.0/settings.ini
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-cursor-blink=true
+gtk-cursor-blink-time=1000
+gtk-cursor-theme-name=breeze_cursors
+gtk-cursor-theme-size=24
+gtk-decoration-layout=:minimize,maximize,close
+gtk-enable-animations=false
+gtk-font-name=Noto Sans,  10
+gtk-icon-theme-name=Sunshine-orange-dark
+gtk-primary-button-warps-slider=true
+gtk-sound-theme-name=ocean
+gtk-theme-name=Breeze-Dark
+gtk-xft-dpi=98304
+=== /home/sunshine/.config/Kvantum/kvantum.kvconfig
+[General]
+theme=Sunshine
+
+### uni detect
+
+### /usr/bin/uni detect
+uni: wrote default config to /home/sunshine/.config/uni/config.toml
+OS:               Sunshine OS (ID=sunshineos ID_LIKE=arch)
+Native manager:   pacman
+Available:        appimage, aur, flatpak, pacman, paru, yay
+Enabled sources:  pacman(1), flatpak(2)
+Config:           /home/sunshine/.config/uni/config.toml
+[rc=0]
+
+### sunshine-pet --help (no display)
+
+### timeout 10 env -u DISPLAY -u WAYLAND_DISPLAY /usr/local/bin/sunshine-pet --help
+timeout: the monitored command dumped core
+/tmp/suos-tools-tests.sh: line 4:  3494 Aborted                    "$@" 2>&1
+[rc=134]
+
+### command inventory
+
+### bash -c ls -1 /usr/bin/sunshine-* /usr/local/bin/sunshine-* 2>/dev/null | sort -u | wc -l
+110
+[rc=0]
+=== END 2026-11-19T16:11:03+00:00 ===

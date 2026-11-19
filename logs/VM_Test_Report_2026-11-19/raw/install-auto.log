@@ -1,0 +1,219 @@
+=== SUNSHINE AUTO INSTALL 2026-11-19T17:14:37+01:00 ===
+==> Partitioning /dev/sda (bios)
+Creating new GPT entries in memory.
+The operation has completed successfully.
+==> Formatting
+==> Copying system (this takes a few minutes)
+
+             11B   0%       0B/s    0:00:00  
+==> Removing live-session configuration
+==> Configuring installed system
+==> Installing the Hyprland desktop
+== Sunshine Hyprland install into /mnt/sunshine-target (Thu Nov 19 17:17:53 CET 2026)
+[1/114] hyprland ok
+[2/114] hypridle ok
+[3/114] hyprlock ok
+[4/114] hyprsunset ok
+[5/114] hyprpolkitagent ok
+[6/114] hyprland-guiutils ok
+[7/114] xdg-desktop-portal-hyprland ok
+[8/114] quickshell ok
+[9/114] uwsm ok
+[10/114] hyprshot ok
+[11/114] hyprpicker ok
+[12/114] cliphist ok
+[13/114] grim ok
+[14/114] slurp ok
+[15/114] swappy ok
+[16/114] wf-recorder ok
+[17/114] wtype ok
+[18/114] ydotool ok
+[19/114] fuzzel ok
+[20/114] foot ok
+[21/114] btop ok
+[22/114] easyeffects ok
+[23/114] songrec ok
+[24/114] translate-shell ok
+[25/114] matugen ok
+[26/114] geoclue ok
+[27/114] pavucontrol-qt ok
+[28/114] libdbusmenu-gtk3 ok
+[29/114] yq ok
+[30/114] adw-gtk-theme ok
+[31/114] tinyxml2 ok
+[32/114] gtkmm3 ok
+[33/114] gtksourceviewmm ok
+[34/114] cairomm ok
+[35/114] clang ok
+[36/114] uv ok
+[37/114] cpptrace ok
+[38/114] jemalloc ok
+[39/114] tesseract ok
+[40/114] tesseract-data-eng ok
+[41/114] upower ok
+[42/114] python-numpy ok
+[43/114] python-pillow ok
+[44/114] lm_sensors ok
+[45/114] libnotify ok
+[46/114] polkit-gnome ok
+[47/114] qt5ct ok
+[48/114] qt6ct ok
+[49/114] kvantum ok
+[50/114] kvantum-qt5 ok
+[51/114] nwg-look ok
+[52/114] breeze-plus ok
+[53/114] darkly-bin ok
+[54/114] ttf-material-symbols-variable ok
+[55/114] ttf-readex-pro ok
+[56/114] ttf-rubik-vf ok
+[57/114] ttf-twemoji ok
+[58/114] illogical-impulse-microtex-git ok
+[59/114] illogical-impulse-bibata-modern-classic-bin ok
+[60/114] wlogout ok
+[61/114] flat-remix-gtk ok
+[62/114] bluedevil ok
+[63/114] gnome-keyring ok
+[64/114] plasma-nm ok
+[65/114] polkit-kde-agent ok
+[66/114] systemsettings ok
+[67/114] dolphin ok
+[68/114] wireplumber ok
+[69/114] pipewire-pulse ok
+[70/114] playerctl ok
+[71/114] brightnessctl ok
+[72/114] ddcutil ok
+[73/114] bc ok
+[74/114] cmake ok
+[75/114] ripgrep ok
+[76/114] jq ok
+[77/114] xdg-user-dirs ok
+[78/114] rsync ok
+[79/114] fontconfig ok
+[80/114] breeze ok
+[81/114] eza ok
+[82/114] fish ok
+[83/114] starship ok
+[84/114] ttf-jetbrains-mono-nerd ok
+[85/114] wl-clipboard ok
+[86/114] xdg-desktop-portal ok
+[87/114] xdg-desktop-portal-kde ok
+[88/114] xdg-desktop-portal-gtk ok
+[89/114] gtk4 ok
+[90/114] libadwaita ok
+[91/114] libsoup3 ok
+[92/114] libportal-gtk4 ok
+[93/114] gobject-introspection ok
+[94/114] glib2 ok
+[95/114] imagemagick ok
+[96/114] qt6-5compat ok
+[97/114] qt6-imageformats ok
+[98/114] qt6-multimedia ok
+[99/114] qt6-positioning ok
+[100/114] qt6-quicktimeline ok
+[101/114] qt6-sensors ok
+[102/114] qt6-translations ok
+[103/114] qt6-virtualkeyboard ok
+[104/114] qt6-wayland ok
+[105/114] qt6-declarative ok
+[106/114] qt6-svg ok
+[107/114] qt6-tools ok
+[108/114] kirigami ok
+[109/114] kdialog ok
+[110/114] syntax-highlighting ok
+[111/114] libqalculate ok
+[112/114] cava ok
+[113/114] fastfetch ok
+[114/114] lsd ok
+failed packages: none
+Sunshine fastfetch config present: stock fastfetch is enough
+== done
+snapshots: configured (the first restore point is created at first boot)
+Generating locales...
+  en_US.UTF-8... done
+Generation complete.
+==> Using drop-in configuration file: 'sunshine.conf'
+==> Starting build: '7.3.4-arch1-2'
+  -> Running build hook: [base]
+  -> Running build hook: [udev]
+  -> Running build hook: [autodetect]
+  -> Running build hook: [microcode]
+  -> Running build hook: [modconf]
+  -> Running build hook: [kms]
+  -> Running build hook: [keyboard]
+  -> Running build hook: [keymap]
+  -> Running build hook: [consolefont]
+==> WARNING: consolefont: no font found in configuration
+  -> Running build hook: [block]
+  -> Running build hook: [encrypt]
+==> WARNING: Possibly missing firmware for module: 'qat_6xxx'
+  -> Running build hook: [filesystems]
+  -> Running build hook: [fsck]
+  -> Running build hook: [grub-btrfs-overlayfs]
+==> Generating module dependencies
+==> Creating zstd-compressed initcpio image: '/boot/initramfs-linux.img'
+  -> Early uncompressed CPIO image generation successful
+==> Initcpio image generation successful
+loading packages...
+resolving dependencies...
+looking for conflicting packages...
+
+Package (1)    New Version  Net Change
+
+sunshine-base  0.6-1         71.68 MiB
+
+Total Installed Size:  71.68 MiB
+
+:: Proceed with installation? [Y/n] 
+checking keyring...
+checking package integrity...
+loading package files...
+checking for file conflicts...
+:: Running pre-transaction hooks...
+(1/2) Restore point before the update (Timeshift systems)...
+(2/2) Performing snapper pre snapshots for the following configurations...
+==> root: 1
+:: Processing package changes...
+installing sunshine-base...
+Optional dependencies for sunshine-base
+    sunshine-payload: the Hyprland desktop (dots, Python venv)
+:: Running post-transaction hooks...
+( 1/10) Reloading system manager configuration...
+  Skipped: Running in chroot.
+( 2/10) Reloading user manager configuration...
+  Skipped: Running in chroot.
+( 3/10) Arming ConditionNeedsUpdate...
+( 4/10) Refreshing PackageKit...
+( 5/10) Making sure the [sunshine] package repository is still in pacman.conf...
+( 6/10) Applying Sunshine OS migrations...
+call to execv failed (No such file or directory)
+error: command failed to execute correctly
+( 7/10) Recording the update state for sunshine-doctor...
+call to execv failed (No such file or directory)
+error: command failed to execute correctly
+( 8/10) Updating icon theme caches...
+( 9/10) Updating the desktop file MIME type cache...
+(10/10) Performing snapper post snapshots for the following configurations...
+==> root: 2
+Installing for i386-pc platform.
+Installation finished. No error reported.
+Generating grub configuration file ...
+Found theme: /usr/share/grub/themes/sunshine/theme.txt
+Found linux image: /boot/vmlinuz-linux
+Found initrd image: /boot/initramfs-linux.img
+Warning: os-prober will be executed to detect other bootable partitions.
+Its output will be used to detect bootable binaries on them and create new boot entries.
+Adding boot menu entry for UEFI Firmware Settings ...
+Detecting snapshots ...
+Found snapshot: 2026-11-19 16:20:22 | @/.snapshots/2/snapshot | post | sunshine-base                                                            |
+Found snapshot: 2026-11-19 16:20:21 | @/.snapshots/1/snapshot | pre  | pacman -U --noconfirm --overwrite * /usr/share/sunshine/pkgs/sunshine-ba |
+Found 2 snapshot(s)
+
+WARNING: 'grub-mkconfig' needs to run at least once to generate the snapshots (sub)menu entry in grub the main menu. After that this script can run alone to generate the snapshot entries.
+
+Unmount /tmp/grub-btrfs.ymrMrpe2l7 .. Success
+done
+==> Done.
+SUNSHINE_INSTALL_OK
+INSTALL_RC=0
+=== END 2026-11-19T17:20:26+01:00 ===
+INSTALL FINISHED rc=0 - press Enter to close

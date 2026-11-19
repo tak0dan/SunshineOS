@@ -1,0 +1,259 @@
+=== INSTALLED SYSTEM VERIFY 2026-11-19T16:45:14+00:00 ===
+
+### hostnamectl
+ Static hostname: sunshine-os
+       Icon name: computer-vm
+         Chassis: vm 💽
+      Machine ID: 0bf921bda86b4c2bbc23266dea2711d1
+         Boot ID: 122e174577dd43628d7846d2ce3297b7
+  Virtualization: oracle
+Operating System: Sunshine OS
+          Kernel: Linux 7.3.4-arch1-2
+    Architecture: x86-64
+ Hardware Vendor: innotek GmbH
+  Hardware Model: VirtualBox
+Hardware Version: 1.2
+Firmware Version: VirtualBox
+   Firmware Date: Fri 2006-12-01
+    Firmware Age: 19y 11month 2w 5d
+[rc=0]
+
+### bash -c cat /etc/os-release | head -8
+NAME="Sunshine OS"
+PRETTY_NAME="Sunshine OS"
+ID=sunshineos
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;255;196;61"
+HOME_URL="https://tak0dan.github.io/sunshineos-site/"
+DOCUMENTATION_URL="https://wiki.archlinux.org/"
+[rc=0]
+
+### bash -c uname -a; findmnt -no FSTYPE,SOURCE /; df -h /
+Linux sunshine-os 7.3.4-arch1-2 #1 SMP PREEMPT_DYNAMIC Thu, 12 Nov 2026 20:11:37 +0000 x86_64 GNU/Linux
+btrfs /dev/sda2[/@]
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda2        20G   11G  9.7G  52% /
+[rc=0]
+
+### bash -c systemctl is-system-running; systemctl --failed --no-pager
+running
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+[rc=0]
+
+### bash -c systemctl is-enabled sddm vboxservice 2>&1; systemctl is-active sddm vboxservice 2>&1
+enabled
+enabled
+active
+active
+[rc=0]
+
+### bash -c loginctl list-sessions; pgrep -af "plasmashell|kwin_wayland" | head -5
+SESSION  UID USER     SEAT  LEADER CLASS      TTY  IDLE SINCE
+      2 1000 sunshine -     685    manager    -    no   -
+      3 1000 sunshine seat0 843    user       tty1 no   -
+     c2 1000 sunshine -     546    background -    no   -
+
+3 sessions listed.
+883 /usr/bin/kwin_wayland_wrapper --xwayland
+887 /usr/bin/kwin_wayland --wayland-fd 7 --socket wayland-1 --xwayland-fd 8 --xwayland-fd 9 --xwayland-display :1 --xwayland-initfd 11 --xwayland-init-display :2 --xwayland-xauthority /run/user/1000/xauth_XNYynE --xwayland
+895 /usr/bin/plasmashell --no-respawn
+1493 /usr/lib/kf6/kioworker /usr/lib/qt6/plugins/kf6/kio/desktop.so desktop  local:/run/user/1000/plasmashellBoomJa.1.kioworker.socket
+1604 bash -c loginctl list-sessions; pgrep -af "plasmashell|kwin_wayland" | head -5
+[rc=0]
+
+### packages
+
+### bash -c pacman -Q sunshine-base hyprland pipewire-pulse 2>&1
+sunshine-base 0.6-1
+hyprland 0.57.2-1
+pipewire-pulse 1:1.6.11-2
+[rc=0]
+
+### bash -c pacman -Dk 2>&1
+No database errors have been found!
+[rc=0]
+
+### bash -c fastfetch --format json 2>/dev/null | grep -E "theme1|theme2|icons1|icons2|prettyName|processName"
+      "prettyName": "Sunshine OS",
+      "processName": "bash",
+      "prettyName": "bash",
+      "processName": "plasmashell",
+      "prettyName": "KDE Plasma",
+      "processName": "kwin_wayland_wrapper",
+      "prettyName": "KWin",
+      "theme1": "Sunshine (BreezeLight) [Qt]",
+      "theme2": "Breeze-Dark [GTK2/3/4]"
+      "icons1": "Sunshine-orange-dark [Qt]",
+      "icons2": "Sunshine-orange-dark [GTK2/3/4]"
+      "processName": "VBoxService",
+      "prettyName": "VBoxService",
+[rc=0]
+
+### bash -c for f in ~/.config/gtk-3.0/settings.ini ~/.config/gtk-4.0/settings.ini ~/.config/Kvantum/kvantum.kvconfig; do echo "=== $f"; cat "$f" 2>&1; done
+=== /home/sunshine/.config/gtk-3.0/settings.ini
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-button-images=true
+gtk-cursor-blink=true
+gtk-cursor-blink-time=1000
+gtk-cursor-theme-name=breeze_cursors
+gtk-cursor-theme-size=24
+gtk-decoration-layout=:minimize,maximize,close
+gtk-enable-animations=true
+gtk-font-name=Noto Sans,  10
+gtk-icon-theme-name=Sunshine-orange-dark
+gtk-menu-images=true
+gtk-modules=colorreload-gtk-module:appmenu-gtk-module
+gtk-primary-button-warps-slider=true
+gtk-shell-shows-menubar=1
+gtk-sound-theme-name=ocean
+gtk-theme-name=Breeze-Dark
+gtk-toolbar-style=3
+gtk-xft-dpi=98304
+=== /home/sunshine/.config/gtk-4.0/settings.ini
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-cursor-blink=true
+gtk-cursor-blink-time=1000
+gtk-cursor-theme-name=breeze_cursors
+gtk-cursor-theme-size=24
+gtk-decoration-layout=:minimize,maximize,close
+gtk-enable-animations=true
+gtk-font-name=Noto Sans,  10
+gtk-icon-theme-name=Sunshine-orange-dark
+gtk-primary-button-warps-slider=true
+gtk-sound-theme-name=ocean
+gtk-theme-name=Breeze-Dark
+gtk-xft-dpi=98304
+=== /home/sunshine/.config/Kvantum/kvantum.kvconfig
+[General]
+theme=Sunshine
+[rc=0]
+
+### first-party tools
+
+### /usr/local/bin/sunshine-identity check
+Identity OK: Sunshine OS
+[rc=0]
+
+### bash -c timeout 60 /usr/local/bin/sunshine-diagnose --print 2>&1 | tail -30
+memtest86+-efi /boot/memtest86+/memtest86x64.efi
+
+=== Conflicts and orphans ===
+Orphans: 0
+.pacnew/.pacsave files:
+
+=== Services and daemons ===
+Failed units above (none listed = none failed)
+
+=== Boot (initramfs / dracut) ===
+15108010 /boot/initramfs-linux.img
+/boot/initramfs-linux.img: PROBLEM reading it
+
+=== Snapshots ===
+File system: btrfs  ->  snapper
+Set up: yes (0 restore points)
+
+=== Journal: errors this boot ===
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:41 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:41 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:41 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:42 sunshine-os librepods[1249]:  BLE scan error occurred: QBluetoothDeviceDiscoveryAgent::InputOutputError 
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): set_loginuid failed
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): set_loginuid failed
+[rc=0]
+
+### bash -c timeout 90 /usr/local/bin/sunshine-doctor --quiet 2>&1; echo DOCTOR_RC=$?
+sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper
+sudo: a password is required
+DOCTOR_RC=1
+[rc=0]
+
+### /usr/local/bin/sunshine-snapshot status
+File system: btrfs  ->  snapper
+Set up: yes (0 restore points)
+[rc=0]
+
+### /usr/local/bin/sunshine-snapshot backend
+snapper (btrfs)
+[rc=0]
+
+### /usr/bin/uni detect
+uni: wrote default config to /home/sunshine/.config/uni/config.toml
+OS:               Sunshine OS (ID=sunshineos ID_LIKE=arch)
+Native manager:   pacman
+Available:        appimage, aur, flatpak, pacman, paru, yay
+Enabled sources:  pacman(1), flatpak(2)
+Config:           /home/sunshine/.config/uni/config.toml
+[rc=0]
+
+### update gate fix / network
+
+### bash -c grep -n "curl -fsS --max-time 8 -o /dev/null https://archlinux.org/feeds/news/" /usr/local/bin/sunshine-update-run
+22:curl -fsS --max-time 8 -o /dev/null https://archlinux.org/feeds/news/ >/dev/null 2>&1 || { bad "No HTTPS access to the Arch repositories. Check the network/proxy and try again."; finish 1; }
+[rc=0]
+
+### bash -c ping -c1 -W3 archlinux.org 2>&1; echo PING_RC=$?
+PING archlinux.org (209.126.35.79) 56(84) bytes of data.
+
+--- archlinux.org ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+PING_RC=1
+[rc=0]
+
+### bash -c curl -fsS --max-time 8 -o /dev/null -w "HTTPS=%{http_code}\n" https://archlinux.org/ 2>&1; echo CURL_RC=$?
+HTTPS=200
+CURL_RC=0
+[rc=0]
+
+### bash -c timeout 12 /usr/local/bin/sunshine-update-check 2>&1; echo CHECK_RC=$?
+{"packages": 10, "sunshine": 1, "distro": false, "release": "", "state": "arrow", "checked": 1795106750}
+CHECK_RC=0
+[rc=0]
+
+### update-run reaches package phase? (10s smoke, then stop)
+
+sudo: no password was provided
+sudo: a password is required
+UPDATE_SMOKE_RC=1
+
+### journal errors (last boot)
+
+### bash -c journalctl -p err -b --no-pager -n 25 2>&1
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:40 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:41 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:41 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:41 sunshine-os kwin_wayland[887]: Modeset failed: Invalid argument
+Nov 19 16:44:42 sunshine-os librepods[1249]:  BLE scan error occurred: QBluetoothDeviceDiscoveryAgent::InputOutputError 
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): set_loginuid failed
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:45:14 sunshine-os VBoxService[546]: pam_loginuid(login:session): set_loginuid failed
+Nov 19 16:45:38 sunshine-os sudo[1972]: pam_unix(sudo:auth): conversation failed
+Nov 19 16:45:38 sunshine-os sudo[1972]: pam_unix(sudo:auth): auth could not identify password for [sunshine]
+Nov 19 16:45:50 sunshine-os sudo[2105]: pam_unix(sudo:auth): conversation failed
+Nov 19 16:45:50 sunshine-os sudo[2105]: pam_unix(sudo:auth): auth could not identify password for [sunshine]
+[rc=0]
+=== END 2026-11-19T16:45:52+00:00 ===

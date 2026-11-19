@@ -1,0 +1,166 @@
+=== FINAL INSTALLED VERIFY 2026-11-19T16:48:57+00:00 ===
+
+### bash -c uname -r; hostnamectl | head -8; findmnt -no FSTYPE,SOURCE /; df -h /
+7.3.5-arch1-1
+ Static hostname: sunshine-os
+       Icon name: computer-vm
+         Chassis: vm 💽
+      Machine ID: 0bf921bda86b4c2bbc23266dea2711d1
+         Boot ID: caca25d16d0d4290b31d1821a068a8b3
+  Virtualization: oracle
+Operating System: Sunshine OS
+          Kernel: Linux 7.3.5-arch1-1
+btrfs /dev/sda2[/@]
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda2        20G   11G  9.2G  54% /
+[rc=0]
+
+### bash -c systemctl is-system-running; systemctl --failed --no-pager
+running
+  UNIT LOAD ACTIVE SUB DESCRIPTION
+
+0 loaded units listed.
+[rc=0]
+
+### bash -c systemctl is-active sddm vboxservice NetworkManager; loginctl list-sessions
+active
+active
+active
+SESSION  UID USER     SEAT  LEADER CLASS      TTY  IDLE SINCE
+      1 1000 sunshine seat0 603    user       tty1 no   -
+      2 1000 sunshine -     611    manager    -    no   -
+     c1 1000 sunshine -     529    background -    no   -
+
+3 sessions listed.
+[rc=0]
+
+### firewall
+
+### bash -c printf "sunshine\n" | sudo -S -p "" ufw status verbose 2>&1
+Status: inactive
+[rc=0]
+
+### bash -c printf "sunshine\n" | sudo -S -p "" iptables -L -n 2>&1 | head -20
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+[rc=0]
+
+### bash -c lsmod | grep -E "^nf_|conntrack|iptable" | head -20
+nf_tables             401408  0
+[rc=0]
+
+### packages/doctor
+
+### bash -c pacman -Q sunshine-base hyprland pipewire-pulse linux 2>&1
+sunshine-base 0.7-1
+hyprland 0.57.2-1
+pipewire-pulse 1:1.6.11-2
+linux 7.3.5.arch1-1
+[rc=0]
+
+### bash -c pacman -Dk 2>&1
+No database errors have been found!
+[rc=0]
+
+### bash -c printf "sunshine\n" | sudo -S -p "" /usr/local/bin/sunshine-doctor --quiet 2>&1; echo DOCTOR_RC=$?
+  boot time: 45.105s 
+
+[32m[1mAll good[0m
+DOCTOR_RC=0
+[rc=0]
+
+### theme
+
+### bash -c kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>&1; kreadconfig6 --file kdeglobals --group Icons --key Theme 2>&1
+SunshineDark
+Sunshine-orange-dark
+[rc=0]
+
+### bash -c fastfetch --format json 2>/dev/null | grep -E "theme1|theme2|icons1|icons2"
+      "theme1": "Sunshine (Dark) [Qt]",
+      "theme2": "Breeze-Dark [GTK2/3/4]"
+      "icons1": "Sunshine-orange-dark [Qt]",
+      "icons2": "Sunshine-orange-dark [GTK2/3/4]"
+[rc=0]
+
+### update gate
+
+### bash -c grep -n "curl -fsS --max-time 8 -o /dev/null https://archlinux.org/feeds/news/" /usr/local/bin/sunshine-update-run
+22:curl -fsS --max-time 8 -o /dev/null https://archlinux.org/feeds/news/ >/dev/null 2>&1 || { bad "No HTTPS access to the Arch repositories. Check the network/proxy and try again."; finish 1; }
+[rc=0]
+
+### bash -c curl -fsS --max-time 8 -o /dev/null -w "HTTPS=%{http_code}\n" https://archlinux.org/; echo CURL_RC=$?
+HTTPS=200
+CURL_RC=0
+[rc=0]
+
+### bash -c ping -c1 -W3 archlinux.org >/dev/null 2>&1; echo PING_RC=$?
+PING_RC=1
+[rc=0]
+
+### bash -c /usr/local/bin/sunshine-update-check 2>&1
+{"packages": 0, "sunshine": 0, "distro": false, "release": "", "state": "none", "checked": 1795106961}
+[rc=0]
+
+### upgrade smoke (patched updater, 90s)
+
+[38;5;220m[1m☀ Sunshine OS update[0m
+
+[38;5;220m[1m☀ Sunshine tools[0m
+[32m✔ ☕ tools updated: none -> 2026.11.19.217 (21 files changed)[0m
+
+[38;5;220m[1m☀ Latest Arch Linux news (read if something looks important)[0m
+  • Update to php ≥ 8.5.12 and/or php-legacy ≥ 8.3.36 to prevent remote code execution
+  • Update to ca-certificates-mozilla ≥ 3.131.1-1 to prevent man-in-the-middle attacks
+  • Mkinitcpio &gt;=42 requires manual intervention for TPM2-based unlocking of LUKS devices
+
+[38;5;220m[1m☀ Checking for updates[0m
+No system package updates right now.
+[32m✔ ☕ Restore points are made automatically before and after the update (go back from the boot menu if anything breaks)[0m
+
+[38;5;220m[1m☀ Refreshing the mirror list[0m
+[32m✔ ☕ arch mirrors ranked[0m
+[32m✔ ☕ chaotic-aur mirrors ranked[0m
+
+[38;5;220m[1m☀ Updating system packages[0m
+[32m✔ ☕ Package keyring is current[0m
+[?25l[1;34m::[0;1m Starting full system upgrade...
+[0m there is nothing to do
+[?25h[32m✔ ☕ System packages are up to date[0m
+
+[38;5;220m[1m☀ Updating Flatpak apps[0m
+
+Nothing to update.
+UPDATE_SMOKE_RC=124
+
+### diagnose as user (permission check)
+
+### bash -c /usr/local/bin/sunshine-diagnose --print 2>&1 | tail -20
+15057561 /boot/initramfs-linux.img
+/boot/initramfs-linux.img: PROBLEM reading it
+
+=== Snapshots ===
+File system: btrfs  ->  snapper
+Set up: yes (0 restore points)
+
+=== Journal: errors this boot ===
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:43 sunshine-os kwin_wayland[668]: Modeset failed: Invalid argument
+Nov 19 16:48:44 sunshine-os librepods[1079]:  BLE scan error occurred: QBluetoothDeviceDiscoveryAgent::InputOutputError 
+Nov 19 16:48:56 sunshine-os VBoxService[529]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:48:56 sunshine-os VBoxService[529]: pam_loginuid(login:session): set_loginuid failed
+Nov 19 16:48:57 sunshine-os VBoxService[529]: pam_loginuid(login:session): Error writing /proc/self/loginuid: Operation not permitted
+Nov 19 16:48:57 sunshine-os VBoxService[529]: pam_loginuid(login:session): set_loginuid failed
+[rc=0]
+=== END 2026-11-19T16:51:09+00:00 ===

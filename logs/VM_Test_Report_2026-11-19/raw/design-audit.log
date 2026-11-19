@@ -1,0 +1,115 @@
+=== DESIGN + SECURITY AUDIT 2026-11-19T16:52:19+00:00 ===
+--- icon theme
+Sunshine-orange-dark
+--- icon dirs
+/usr/share/icons/Sunshine-orange
+/usr/share/icons/Sunshine-orange-dark
+/usr/share/icons/Sunshine-orange-light
+--- action icon luminance (0=black,255=white)
+[Sunshine-orange-dark]
+  document-open: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/document-open.svg'
+  document-save: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/document-save.svg'
+  edit-cut: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/edit-cut.svg'
+  edit-copy: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/edit-copy.svg'
+  edit-paste: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/edit-paste.svg'
+  edit-undo: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/edit-undo.svg'
+  edit-redo: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/edit-redo.svg'
+  view-refresh: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/view-refresh.svg'
+  go-previous: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/go-previous.svg'
+  go-next: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/go-next.svg'
+  application-exit: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/application-exit.svg'
+  configure: ERR cannot identify image file '/usr/share/icons/Sunshine-orange-dark/16@2x/actions/configure.svg'
+[Sunshine-orange]
+  document-open: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/document-open.svg'
+  document-save: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/document-save.svg'
+  edit-cut: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/edit-cut.svg'
+  edit-copy: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/edit-copy.svg'
+  edit-paste: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/edit-paste.svg'
+  edit-undo: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/edit-undo.svg'
+  edit-redo: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/edit-redo.svg'
+  view-refresh: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/view-refresh.svg'
+  go-previous: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/go-previous.svg'
+  go-next: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/go-next.svg'
+  application-exit: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/application-exit.svg'
+  configure: ERR cannot identify image file '/usr/share/icons/Sunshine-orange/16/actions/configure.svg'
+[breeze-dark]
+  document-open: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/document-open.svg'
+  document-save: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/document-save.svg'
+  edit-cut: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/edit-cut.svg'
+  edit-copy: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/edit-copy.svg'
+  edit-paste: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/edit-paste.svg'
+  edit-undo: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/edit-undo.svg'
+  edit-redo: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/edit-redo.svg'
+  view-refresh: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/view-refresh.svg'
+  go-previous: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/go-previous.svg'
+  go-next: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/go-next.svg'
+  application-exit: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/application-exit.svg'
+  configure: ERR cannot identify image file '/usr/share/icons/breeze-dark/actions/22/configure.svg'
+[breeze]
+  document-open: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/document-open.svg'
+  document-save: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/document-save.svg'
+  edit-cut: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/edit-cut.svg'
+  edit-copy: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/edit-copy.svg'
+  edit-paste: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/edit-paste.svg'
+  edit-undo: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/edit-undo.svg'
+  edit-redo: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/edit-redo.svg'
+  view-refresh: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/view-refresh.svg'
+  go-previous: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/go-previous.svg'
+  go-next: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/go-next.svg'
+  application-exit: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/application-exit.svg'
+  configure: ERR cannot identify image file '/usr/share/icons/breeze/actions/22/configure.svg'
+--- plasma style / colors
+SunshineDark
+
+kvantum
+
+--- Kvantum
+[General]
+theme=Sunshine
+--- GTK
+/home/sunshine/.config/gtk-3.0/settings.ini:gtk-application-prefer-dark-theme=true
+/home/sunshine/.config/gtk-3.0/settings.ini:gtk-font-name=Noto Sans,  10
+/home/sunshine/.config/gtk-3.0/settings.ini:gtk-icon-theme-name=Sunshine-orange-dark
+/home/sunshine/.config/gtk-3.0/settings.ini:gtk-theme-name=Breeze-Dark
+/home/sunshine/.config/gtk-4.0/settings.ini:gtk-application-prefer-dark-theme=true
+/home/sunshine/.config/gtk-4.0/settings.ini:gtk-font-name=Noto Sans,  10
+/home/sunshine/.config/gtk-4.0/settings.ini:gtk-icon-theme-name=Sunshine-orange-dark
+/home/sunshine/.config/gtk-4.0/settings.ini:gtk-theme-name=Breeze-Dark
+--- wallpaper / look-and-feel
+Next
+Sunshine
+com.sunshineos.sunshine
+org.kde.breezedark.desktop
+org.kde.breeze.desktop
+org.kde.breezetwilight.desktop
+--- font
+NotoSans-Regular.ttf: "Noto Sans" "Regular"
+NotoSansMono-Regular.ttf: "Noto Sans Mono" "Regular"
+--- security details
+[sunshine]
+SigLevel = PackageRequired DatabaseOptional
+Server = https://github.com/tak0dan/sunshineos-repo/releases/download/repo
+
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+--- root / sudo
+root L 2010-09-19 -1 -1 -1 -1
+/etc/sudoers:root ALL=(ALL:ALL) ALL
+/etc/sudoers:%wheel ALL=(ALL:ALL) ALL
+--- pwquality / faillock
+deny = 10
+unlock_time = 300
+--- audit / journal
+audit 4.2.1-1
+#Storage=persistent
+--- firefox policy
+ls: cannot access '/usr/lib/firefox/distribution/policies.json': No such file or directory
+ls: cannot access '/etc/firefox/policies/policies.json': No such file or directory
+--- flatpak default
+flathub	https://dl.flathub.org/repo/
+--- unattended update units
+systemd-sysupdate-reboot.timer               disabled        disabled
+systemd-sysupdate-update.timer               disabled        disabled
+systemd-sysupdate.timer                      alias           -
+=== END 2026-11-19T16:52:24+00:00 ===

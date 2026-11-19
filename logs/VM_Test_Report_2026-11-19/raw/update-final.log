@@ -1,0 +1,44 @@
+=== SUNSHINE-UPDATE FINAL 2026-11-19T16:55:44+00:00 ===
+
+[38;5;220m[1m☀ Sunshine OS update[0m
+
+[38;5;220m[1m☀ Sunshine tools[0m
+[32m✔ ☕ tools updated: 2026.11.19.217 -> 2026.11.19.219 (3 files changed)[0m
+[32m✔ ☕ 0006-visible-boot-log: boot log made visible[0m
+migrations applied: 1
+[32m✔ ☕ Internet reachable (HTTPS archlinux.org)[0m
+
+[38;5;220m[1m☀ Latest Arch Linux news (read if something looks important)[0m
+  • Update to php ≥ 8.5.12 and/or php-legacy ≥ 8.3.36 to prevent remote code execution
+  • Update to ca-certificates-mozilla ≥ 3.131.1-1 to prevent man-in-the-middle attacks
+  • Mkinitcpio &gt;=42 requires manual intervention for TPM2-based unlocking of LUKS devices
+
+[38;5;220m[1m☀ Checking for updates[0m
+No system package updates right now.
+[32m✔ ☕ Restore points are made automatically before and after the update (go back from the boot menu if anything breaks)[0m
+
+[38;5;220m[1m☀ Refreshing the mirror list[0m
+[32m✔ ☕ arch mirrors ranked[0m
+[32m✔ ☕ chaotic-aur mirrors ranked[0m
+
+[38;5;220m[1m☀ Updating system packages[0m
+[32m✔ ☕ Package keyring is current[0m
+[?25l[1;34m::[0;1m Starting full system upgrade...
+[0m there is nothing to do
+[?25h[32m✔ ☕ System packages are up to date[0m
+
+[38;5;220m[1m☀ Updating Flatpak apps[0m
+
+Nothing to update.
+
+[38;5;220m[1m☀ Final health check[0m
+  restore point made before repairing (undo from the boot menu or sunshine-snapshot)
+  boot time: 45.105s 
+
+[32m[1mAll good[0m
+
+[38;5;220m[1m☀ Tidying up[0m
+[32m✔ ☕ Old package cache cleaned[0m
+  handled: 0, left for you: 0
+
+[38;5;220m[1m☀ Apps you chose[0m
