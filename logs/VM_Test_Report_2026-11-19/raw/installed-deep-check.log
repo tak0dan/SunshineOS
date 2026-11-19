@@ -1,0 +1,110 @@
+=== INSTALLED DEEP CHECK 2026-11-19T16:46:13+00:00 ===
+--- boot files
+total 32M
+drwxr-xr-x 1 root root   0 Nov 19 16:17 efi
+drwxr-xr-x 1 root root 106 Nov 19 16:21 grub
+-rw------- 1 root root 15M Nov 19 16:21 initramfs-linux.img
+-rw-r--r-- 1 root root 17M Nov 19 16:17 vmlinuz-linux
+/boot/initramfs-linux.img: regular file, no read permission
+==> ERROR: Unable to read file: '/boot/initramfs-linux.img'
+--- zstd test
+zstd: /boot/initramfs-linux.img: Permission denied 
+ZSTD_RC=1
+--- boot mount/df
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda2        20G   11G  9.7G  52% /
+--- doctor (with sudo)
+  boot time: 34.050s 
+
+[32m[1mAll good[0m
+DOCTOR_RC=0
+--- doctor fix (with sudo)
+  [32m✔[0m package databases are intact
+  [32m✔[0m no partial upgrade detected
+  [32m✔[0m recent cached packages are intact
+  [32m✔[0m core packages are installed
+  [32m✔[0m no pending .pacnew files
+  [32m✔[0m [sunshine] repository is configured
+
+[38;5;220m[1m☀ Desktop[0m
+  [32m✔[0m icon font is the tested version (2.874-1)
+
+[38;5;220m[1m☀ Boot[0m
+  [32m✔[0m kernel image present: linux
+  [32m✔[0m initramfs present: linux
+  [32m✔[0m last update: 0 day(s) ago
+  [32m✔[0m /boot has 9887 MB free
+  [32m✔[0m Intel microcode installed
+  [32m✔[0m kernel image fully allocated (GRUB can read it)
+  [32m✔[0m GRUB menu present
+  [32m✔[0m /etc/fstab consistent
+
+[38;5;220m[1m☀ System[0m
+  [32m✔[0m btrfs reports no device errors
+  [32m✔[0m clock is synchronised
+  [32m✔[0m swap is active
+  [32m✔[0m no failed services
+  [32m✔[0m root disk 52% used
+  [32m✔[0m network service running
+  [32m✔[0m running kernel matches installed modules
+  [32m✔[0m root is writable
+  [32m✔[0m DNS configuration present
+  [32m✔[0m microcode is built into the initramfs
+  [32m✔[0m mkinitcpio hooks all exist
+  [32m✔[0m NetworkManager is enabled
+  [32m✔[0m sddm is enabled
+  [32m✔[0m sudo configuration is valid
+  [32m✔[0m the boot menu points to an existing root partition
+  [32m✔[0m time zone is set
+  [32m✔[0m system language is set
+  boot time: 34.050s 
+
+[38;5;220m[1m☀ Restore points[0m
+  [32m✔[0m snapper configured for /
+  [32m✔[0m snapper-timeline.timer enabled
+  [32m✔[0m snapper-cleanup.timer enabled
+  [32m✔[0m grub-btrfsd.service enabled
+  [32m✔[0m 6 restore point(s) available
+  [32m✔[0m automatic snapshot before/after every update (snap-pac)
+  [32m✔[0m snapshots appear in the GRUB menu
+
+[32m[1mAll good[0m
+DOCTOR_FIX_RC=0
+--- after fix
+-rw------- 1 root root 15M Nov 19 16:21 /boot/initramfs-linux.img
+/boot/initramfs-linux.img: regular file, no read permission
+==> ERROR: Unable to read file: '/boot/initramfs-linux.img'
+
+--- theme/kde config
+
+### bash -c kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>&1; kreadconfig6 --file kdeglobals --group Icons --key Theme 2>&1
+
+Sunshine-orange-dark
+[rc=0]
+
+### bash -c grep -RIn "Sunshine (BreezeLight)\|SunshineDark\|ColorScheme" ~/.config/kdeglobals /etc/xdg 2>/dev/null | head -30
+/home/sunshine/.config/kdeglobals:122:ColorSchemeHash=bbe8e64dea516f7a7ce26e4fc52bbb151ece3a71
+[rc=0]
+
+### bash -c ls -l /usr/share/color-schemes | grep -i sunshine; ls -l /usr/share/plasma/look-and-feel | grep -i sunshine
+-rw-r--r-- 1 root root 3131 Nov 19 06:33 SunshineDark.colors
+drwxr-xr-x 1 root root 74 Nov 19 16:20 com.sunshineos.sunshine
+[rc=0]
+
+### bash -c fastfetch --format json 2>/dev/null | grep -E "theme1|theme2|icons1|icons2"
+      "theme1": "Sunshine (BreezeLight) [Qt]",
+      "theme2": "Breeze-Dark [GTK2/3/4]"
+      "icons1": "Sunshine-orange-dark [Qt]",
+      "icons2": "Sunshine-orange-dark [GTK2/3/4]"
+[rc=0]
+--- apply dark scheme
+Successfully applied the color scheme SunshineDark to your current Plasma session
+APPLY_RC=0
+The requested theme "Sunshine" is already set as the theme for the current Plasma session.
+APPLY_DT_RC=0
+SunshineDark
+      "theme1": "Sunshine (Dark) [Qt]",
+      "theme2": "Breeze-Dark [GTK2/3/4]"
+      "icons1": "Sunshine-orange-dark [Qt]",
+      "icons2": "Sunshine-orange-dark [GTK2/3/4]"
+=== END 2026-11-19T16:46:21+00:00 ===

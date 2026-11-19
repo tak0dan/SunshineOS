@@ -1,0 +1,455 @@
+=== ENTERPRISE AUDIT 2026-11-19T16:51:52+00:00 ===
+--- identity / lifecycle
+
+### bash -c cat /etc/os-release | grep -E "^(NAME|ID|BUILD_ID|HOME_URL|DOCUMENTATION_URL)="
+NAME="Sunshine OS"
+ID=sunshineos
+BUILD_ID=rolling
+HOME_URL="https://tak0dan.github.io/sunshineos-site/"
+DOCUMENTATION_URL="https://wiki.archlinux.org/"
+[rc=0]
+
+### bash -c pacman -Q | wc -l; pacman -Qe | wc -l
+1295
+345
+[rc=0]
+
+### bash -c grep -R "^SigLevel" /etc/pacman.conf; grep -nE "^\[(core|extra|multilib|chaotic-aur|sunshine)\]" /etc/pacman.conf
+SigLevel    = Required DatabaseOptional
+SigLevel = PackageRequired DatabaseOptional
+85:[sunshine]
+89:[core]
+95:[extra]
+105:[multilib]
+110:[chaotic-aur]
+[rc=0]
+
+### bash -c pacman-conf --repo=chaotic-aur 2>/dev/null | head -12
+Usage = All
+Server = https://gb-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://se-1-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://geo-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://gb-1-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://se-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://de-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://us-mi-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://de-4-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://de-2-mirror.chaotic.cx/chaotic-aur/x86_64
+Server = https://us-mirror.chaotic.cx/chaotic-aur/x86_64
+[rc=0]
+
+### bash -c pacman -Q chaotic-keyring chaotic-mirrorlist 2>&1
+chaotic-keyring 20251028-1
+chaotic-mirrorlist 20260403-1
+[rc=0]
+
+### bash -c systemctl list-timers --all --no-pager | head -25
+NEXT                                 LEFT LAST                        PASSED UNIT                             ACTIVATES
+Thu 2026-11-19 16:58:00 UTC          6min -                                - snapper-cleanup.timer            snapper-cleanup.service
+Thu 2026-11-19 17:00:00 UTC          8min -                                - snapper-timeline.timer           snapper-timeline.service
+Thu 2026-11-19 17:03:00 UTC         11min -                                - systemd-tmpfiles-clean.timer     systemd-tmpfiles-clean.service
+Thu 2026-11-19 17:15:13 UTC         23min Thu 2026-11-19 16:43:28 UTC      - sunshine-health.timer            sunshine-health.service
+Fri 2026-11-20 00:00:00 UTC            7h Thu 2026-11-19 16:43:34 UTC      - shadow.timer                     shadow.service
+Fri 2026-11-20 09:57:26 UTC           17h Thu 2026-11-19 16:43:34 UTC      - man-db.timer                     man-db.service
+Mon 2026-11-23 00:00:00 UTC        3 days Thu 2026-11-19 16:43:34 UTC      - paccache.timer                   paccache.service
+Mon 2026-11-23 01:07:39 UTC        3 days Thu 2026-11-19 16:43:34 UTC      - fstrim.timer                     fstrim.service
+Mon 2026-11-23 04:03:18 UTC        3 days Thu 2026-11-19 16:43:34 UTC      - reflector.timer                  reflector.service
+Fri 2026-11-27 03:09:16 UTC 1 week 0 days Thu 2026-11-19 16:43:34 UTC      - archlinux-keyring-wkd-sync.timer archlinux-keyring-wkd-sync.service
+
+10 timers listed.
+[rc=0]
+--- security posture
+
+### bash -c asroot() { printf "sunshine\n" | sudo -S -p "" "$@"; }; asroot ufw status verbose 2>&1
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+1714:1764/tcp              ALLOW IN    Anywhere                   # KDE Connect
+1714:1764/udp              ALLOW IN    Anywhere                   # KDE Connect
+5353/udp                   ALLOW IN    Anywhere                   # mDNS discovery
+1714:1764/tcp (v6)         ALLOW IN    Anywhere (v6)              # KDE Connect
+1714:1764/udp (v6)         ALLOW IN    Anywhere (v6)              # KDE Connect
+5353/udp (v6)              ALLOW IN    Anywhere (v6)              # mDNS discovery
+
+[rc=0]
+
+### bash -c getenforce 2>&1 || echo NO_SELINUX; aa-status 2>&1 | head -5 || echo NO_APPARMOR
+bash: line 1: getenforce: command not found
+NO_SELINUX
+bash: line 1: aa-status: command not found
+[rc=0]
+
+### bash -c pacman -Q sssd realmd adcli samba winbind 2>&1
+error: package 'sssd' was not found
+error: package 'realmd' was not found
+error: package 'adcli' was not found
+error: package 'samba' was not found
+error: package 'winbind' was not found
+[rc=1]
+
+### bash -c pacman -Q shim-signed sbsigntools sbctl 2>&1
+error: package 'shim-signed' was not found
+error: package 'sbsigntools' was not found
+error: package 'sbctl' was not found
+[rc=1]
+
+### bash -c ls /sys/firmware/efi 2>&1 | head -3; bootctl status 2>&1 | head -8
+ls: cannot access '/sys/firmware/efi': No such file or directory
+Not booted with EFI or running in a container, skipping EFI variable modifications.
+Couldn't find EFI system partition. It is recommended to mount it to /boot/ or /efi/.
+Alternatively, use --esp-path= to specify path to mount point.
+System:
+Not booted with EFI
+
+[rc=0]
+
+### bash -c findmnt -no FSTYPE,OPTIONS /; lsblk -o NAME,FSTYPE,SIZE,MOUNTPOINTS
+btrfs rw,noatime,space_cache=v2,subvolid=256,subvol=/@
+NAME   FSTYPE SIZE MOUNTPOINTS
+sda            20G 
+├─sda1          2M 
+└─sda2 btrfs   20G /home
+                   /var/cache
+                   /var/log
+                   /
+zram0  swap   2.4G [SWAP]
+[rc=0]
+
+### bash -c swapon --show 2>&1; zramctl 2>&1 | head -4
+NAME       TYPE      SIZE USED PRIO
+/dev/zram0 partition 2.4G   0B  100
+NAME       ALGORITHM DISKSIZE DATA COMPR TOTAL STREAMS MOUNTPOINT
+/dev/zram0 zstd          2.4G   4K   64B   20K         [SWAP]
+[rc=0]
+
+### bash -c ls -l /etc/sddm.conf.d/ 2>&1; cat /etc/sddm.conf.d/*.conf 2>/dev/null
+total 12
+-rw-r--r-- 1 root root  25 Nov 19 16:20 10-sunshine.conf
+-rw-r--r-- 1 root root 352 Nov 19 08:41 20-sunshine-sessions.conf
+-rw-r--r-- 1 root root  41 Nov 19 16:44 zz-test-autologin.conf
+[Theme]
+Current=sunshine
+# Only the Sunshine sessions are offered: Plasma and Sunshine (Hyprland). The stock "Hyprland" entries of the hyprland
+# package start the compositor without the safety net (VM-safe settings, fallback to Plasma) and crash on machines without 3D.
+[Wayland]
+SessionDir=/usr/share/sunshine/wayland-sessions
+
+[X11]
+SessionDir=/usr/share/sunshine/xsessions
+[Autologin]
+User=sunshine
+Session=plasma
+[rc=0]
+
+### bash -c getent passwd sunshine; groups sunshine; passwd -S sunshine 2>&1
+sunshine:x:1000:1000::/home/sunshine:/usr/bin/fish
+sunshine : sunshine wheel network power video storage optical lp audio input i2c
+sunshine P 2026-11-19 -1 -1 -1 -1
+[rc=0]
+--- management / remote
+
+### bash -c systemctl is-enabled sshd 2>&1; systemctl is-active sshd 2>&1
+disabled
+inactive
+[rc=3]
+
+### bash -c pacman -Q openssh 2>&1
+openssh 10.6p2-1
+[rc=0]
+
+### bash -c command -v ansible; command -v puppet; command -v chef-client; command -v salt-call; echo MGMT_DONE
+MGMT_DONE
+[rc=0]
+
+### bash -c pacman -Q cockpit 2>&1
+error: package 'cockpit' was not found
+[rc=1]
+
+### bash -c pacman -Q flatpak 2>&1; flatpak remotes 2>&1
+flatpak 1:1.18.4-2
+flathub	system
+[rc=0]
+--- enterprise apps
+
+### bash -c for p in firefox chromium libreoffice-fresh libreoffice-still thunderbird onlyoffice-bin teams-for-linux slack-desktop zoom remmina freerdp virt-viewer cups cups-pdf hplip system-config-printer orca speech-dispatcher; do pacman -Q "$p" >/dev/null 2>&1 && echo "yes $p" || echo "no  $p"; done
+yes firefox
+no  chromium
+no  libreoffice-fresh
+no  libreoffice-still
+no  thunderbird
+no  onlyoffice-bin
+no  teams-for-linux
+no  slack-desktop
+no  zoom
+no  remmina
+no  freerdp
+no  virt-viewer
+yes cups
+yes cups-pdf
+yes hplip
+yes system-config-printer
+no  orca
+no  speech-dispatcher
+[rc=0]
+
+### bash -c pacman -Qg 2>/dev/null | grep -E "^(gnome|kde-applications|plasma|hyprland|sunshine)" | head -20
+kde-applications ark
+kde-applications dolphin
+kde-applications gwenview
+kde-applications kate
+kde-applications kdeconnect
+kde-applications kdialog
+kde-applications kio-extras
+kde-applications konsole
+kde-applications okular
+kde-applications signon-kwallet-extension
+kde-applications skanpage
+plasma aurorae
+plasma bluedevil
+plasma breeze
+plasma breeze-cursors
+plasma breeze-gtk
+plasma flatpak-kcm
+plasma kactivitymanagerd
+plasma kde-cli-tools
+plasma kde-gtk-config
+[rc=0]
+
+### bash -c ls /usr/share/applications | sed "s/\.desktop$//" | sort | head -80
+assistant
+breezestyleconfig
+btop
+btrfs-assistant
+calamares
+cartes-geo-handler
+cmake-gui
+com.github.wwmm.easyeffects
+cups
+darklystyleconfig
+designer
+firefox
+foot
+footclient
+foot-server
+gcr-prompter
+gcr-viewer
+geoclue-demo-agent
+geoclue-where-am-i
+gkbd-keyboard-display
+gnome-system-monitor-kde
+google-maps-geo-handler
+hplip
+hp-uiscan
+htop
+intent.cache
+kaccess
+kcm_access
+kcm_activities
+kcm_animations
+kcm_app-permissions
+kcm_autostart
+kcm_baloofile
+kcm_bluetooth
+kcm_breezedecoration
+kcm_cellular_network
+kcm_clock
+kcm_colors
+kcm_componentchooser
+kcm_cursortheme
+kcm_darklydecoration
+kcm_desktoppaths
+kcm_desktoptheme
+kcm_feedback
+kcm_filetypes
+kcm_firewall
+kcm_fontinst
+kcm_fonts
+kcm_gamecontroller
+kcm_icons
+kcm_kaccounts
+kcm_kded
+kcm_keyboard
+kcm_keys
+kcm_krunnersettings
+kcm_kscreen
+kcm_kwindecoration
+kcm_kwin_effects
+kcm_kwinoptions
+kcm_kwinrules
+kcm_kwin_scripts
+kcm_kwintabbox
+kcm_kwin_virtualdesktops
+kcm_kwinxwayland
+kcm_landingpage
+kcm_lookandfeel
+kcm_mobile_hotspot
+kcm_mobile_power
+kcm_mobile_wifi
+kcm_mobile_wired
+kcm_mouse
+kcm_netpref
+kcm_networkmanagement
+kcm_nightlight
+kcm_nighttime
+kcm_notifications
+kcm_plasmasearch
+kcm_powerdevilprofilesconfig
+kcm_printer_manager
+kcm_proxy
+[rc=0]
+--- update / recovery
+
+### bash -c systemctl is-enabled snapper-timers.timer snapper-cleanup.timer 2>&1; systemctl list-timers --all --no-pager | grep -i snap
+not-found
+enabled
+Thu 2026-11-19 16:58:00 UTC          6min -                                - snapper-cleanup.timer            snapper-cleanup.service
+Thu 2026-11-19 17:00:00 UTC          8min -                                - snapper-timeline.timer           snapper-timeline.service
+[rc=0]
+
+### bash -c snapper list 2>&1 | head -12
+No permissions.
+[rc=0]
+
+### bash -c ls -1 /usr/local/bin/sunshine-* | xargs -n1 basename
+sunshine-apps
+sunshine-backup
+sunshine-boot-repair
+sunshine-cleanup
+sunshine-crypt-setup
+sunshine-desktops
+sunshine-detect-location
+sunshine-diagnose
+sunshine-doctor
+sunshine-drivers
+sunshine-fastfetch-patch
+sunshine-fix
+sunshine-fix-pacman
+sunshine-game-run
+sunshine-gaming
+sunshine-health-scan
+sunshine-hyprland-install
+sunshine-hyprland-session
+sunshine-identity
+sunshine-info
+sunshine-install
+sunshine-kernel
+sunshine-live-setup
+sunshine-migrate
+sunshine-nixos-grub
+sunshine-pacnew
+sunshine-performance
+sunshine-pet
+sunshine-plasma-setup
+sunshine-pods
+sunshine-post-install
+sunshine-prompt
+sunshine-register-base
+sunshine-repo
+sunshine-rescue
+sunshine-reset-plasma
+sunshine-restore-visuals
+sunshine-secureboot
+sunshine-session
+sunshine-session-notice
+sunshine-set-shell
+sunshine-snapshot
+sunshine-snapshots-setup
+sunshine-state-hook
+sunshine-support
+sunshine-term
+sunshine-theme-wallpapers
+sunshine-toolbox
+sunshine-toolsync
+sunshine-topbar
+sunshine-update
+sunshine-update-check
+sunshine-update-notifier
+sunshine-update-run
+sunshine-webapp
+sunshine-welcome
+[rc=0]
+
+### bash -c cat /etc/xdg/autostart/*.desktop 2>/dev/null | grep -E "^Name=" | sort -u | head -30
+Name=Accessibility
+Name=AT-SPI D-Bus Bus
+Name=Baloo File Daemon
+Name=Certificate and Key Storage
+Name=Geoclue Demo agent
+Name=GMenuDBusMenuProxy
+Name=KDE Connect
+Name=NetworkManager Applet
+Name=Plasma
+Name=Plasma Session Restore
+Name=PolicyKit Authentication Agent
+Name=Power Management
+Name=Print Queue Applet
+Name=Secret Storage Service
+Name=Sunshine Welcome
+Name=User folders update
+Name=VMware User Agent
+Name=xapp-sn-watcher
+Name=XembedSniProxy
+[rc=0]
+--- usability / locale
+
+### bash -c localectl status 2>&1; timedatectl 2>&1 | head -8
+System Locale: LANG=en_US.UTF-8
+    VC Keymap: us
+   X11 Layout: (unset)
+               Local time: Thu 2026-11-19 16:51:54 UTC
+           Universal time: Thu 2026-11-19 16:51:54 UTC
+                 RTC time: Thu 2026-11-19 16:51:54
+                Time zone: UTC (UTC, +0000)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+[rc=0]
+
+### bash -c ls /usr/share/i18n/locales 2>/dev/null | wc -l; locale -a 2>/dev/null | head -10
+371
+C
+C.utf8
+en_US.utf8
+POSIX
+[rc=0]
+
+### bash -c pacman -Q noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-liberation 2>&1
+error: package 'noto-fonts-cjk' was not found
+noto-fonts 1:2026.11.01-1
+noto-fonts-emoji 1:20260924-1
+ttf-liberation 2.1.5-2
+[rc=1]
+--- resource baseline
+
+### bash -c free -h; uptime; df -h / /boot 2>&1
+               total        used        free      shared  buff/cache   available
+Mem:           4.8Gi       1.4Gi       1.4Gi        47Mi       2.3Gi       3.4Gi
+Swap:          2.4Gi          0B       2.4Gi
+ 16:51:54 up 3 min,  1 user,  load average: 0.86, 1.04, 0.50
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda2        20G   11G  9.1G  55% /
+/dev/sda2        20G   11G  9.1G  55% /
+[rc=0]
+
+### bash -c systemd-analyze 2>&1; systemd-analyze blame 2>/dev/null | head -12
+Startup finished in 21.576s (kernel) + 5.851s (initrd) + 17.678s (userspace) = 45.105s 
+graphical.target reached after 7.015s in userspace.
+15.020s systemd-time-wait-sync.service
+ 9.249s dev-sda2.device
+ 9.249s dev-disk-by\x2dpath-pci\x2d0000:00:0d.0\x2data\x2d1.0\x2dpart-by\x2dpartnum-2.device
+ 9.249s sys-devices-pci0000:00-0000:00:0d.0-ata1-host0-target0:0:0-0:0:0:0-block-sda-sda2.device
+ 9.249s dev-disk-by\x2dpath-pci\x2d0000:00:0d.0\x2data\x2d1.0\x2dpart-by\x2dlabel-sunshine.device
+ 9.249s dev-disk-by\x2dpartlabel-sunshine\x2droot.device
+ 9.249s dev-disk-by\x2dpath-pci\x2d0000:00:0d.0\x2data\x2d1\x2dpart2.device
+ 9.249s dev-disk-by\x2ddiskseq-1\x2dpart2.device
+ 9.249s dev-disk-by\x2did-ata\x2dVBOX_HARDDISK_VB48d1cd23\x2d04b8e938\x2dpart2.device
+ 9.249s dev-disk-by\x2dlabel-sunshine.device
+ 9.249s dev-disk-by\x2dpartuuid-60b8c288\x2dbb9e\x2d4ad2\x2d965d\x2d0743ab815a43.device
+ 9.249s dev-disk-by\x2dpath-pci\x2d0000:00:0d.0\x2data\x2d1.0\x2dpart-by\x2dpartuuid-60b8c288\x2dbb9e\x2d4ad2\x2d965d\x2d0743ab815a43.device
+[rc=0]
+=== END 2026-11-19T16:51:55+00:00 ===

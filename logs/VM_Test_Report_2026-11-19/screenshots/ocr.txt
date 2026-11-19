@@ -1,10 +1,10 @@
-=== 01-live-boot.png ===
+===== 01-live-boot.png =====
 ea ST ie) Cl se sd
 [ 0.205643] virt/tdx: TDX not supported by the host platform
 
  
 
-=== 02-live-desktop.png ===
+===== 02-live-desktop.png =====
 iPS) las Dt ce cL e
 cca
 
@@ -129,4 +129,1175 @@ emeoael®e rrr)
 
 S283
 @ 3% 1941 2006
+
+===== 03-welcome.png =====
+ie)
+SRNL.
+
+las Dt cL cy e
+
+ 
+
+Ase
+
+eee a
+os installed system
+
+     
+    
+        
+         
+   
+       
+
+ 
+ 
+
+Neeru e ry
+
+@)) Welcome to Sunshine OS
+
+You are running the live session. Nothing is changed on your computer until you install.
+
+  
+
+Install Sunshine OS
+Put Sunshine OS on this computer
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+eS) fRera 0 ferro w i}
+Coe cl ORC Cree een ee Se UR Seu Sure
+
+-*
+PoE oy @® Restore visuals cea au)
+Undo a bad change (snapshots) Pull the latest themes and apply them (works offline too) Thousands more apps
+ety Corns eT
+aC RC Te ad Health check, clean up, repair Pee Wat Meo
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Peay
+Rea EN)
+
+ 
+ 
+  
+
+Battery and noise control
+
+Ce Aias
+SOMA
+
+Seas |
+
+ 
+
+ 
+
+ 
+
+ 
+
+RUA Sco}
+
+ 
+
+ 
+
+oa
+
+ 
+
+meoae® Pele
+
+ 
+
+(S515)
+@ 3% 49413006
+
+===== 04-toolbox.png =====
+Ase
+
+eee a
+os Deco ecu
+
+ 
+ 
+
+Deru ae
+
+Ce
+
+STE
+
+ 
+
+Restore poi
+Wier kat
+
+ 
+
+eee
+ra Ta
+
+ 
+
+Ce Aias
+Peete
+
+ 
+
+Se Ue aT
+
+  
+
+ 
+
+ 
+
+ES
+Merde
+
+15:56,
+SRR.
+
+   
+
+ 
+
+STS od
+
+ 
+
+i
+
+a
+
+ 
+
+Sunshine Toolbox
+
+Everything to keep Sunshine OS healthy, in one place.
+
+ 
+
+Cooma ng
+[Uren ile)
+
+SC ee ee aay
+
+ia ual sag
+CERES ee ue na ere oR aS)
+
+Cleanup
+Gee Ree mec
+
+Os ec cue
+eran OO eRe
+
+arg
+
+Rescue ny
+Make sure the system is still Sunshine OS
+
+POR
+
+eC
+
+ra
+
+eral
+
+ 
+
+ 
+
+ 
+
+ae oe me CHC)
+
+ 
+
+      
+       
+   
+ 
+   
+   
+   
+   
+   
+     
+     
+   
+   
+     
+   
+     
+   
+   
+      
+
+ 
+
+ob *# @aG
+
+===== 05-store.png =====
+Pers Dos td ca cod
+BER. i) e
+
+ 
+
+Ase
+
+eee a
+os Deco ecu
+
+    
+  
+  
+  
+ 
+ 
+  
+ 
+ 
+ 
+ 
+  
+
+  
+
+Reena Tn eas - ao x
+SSCs rod - ao x
+
+ 
+
+ 
+
+Tol - o
+a
+
+ 
+
+ 
+  
+  
+ 
+  
+  
+  
+
+SMELT: fe Pat
+g
+5
+q eli)
+| Piel ae ley ao i
+eae Teun)
+a Pontes Nia BYurmg
+
+| Gs say Pick anything that sounds like you. The store will show apps for it first. You can change this any time in Settings.
+Poa colea ol ettings
+
+Eker
+
+ 
+  
+
+4 e ra a cy
+i ERIE Reis Dorcas ues PE me Ae)
+eee
+ao
+A at ry 2
+cI ete Raita ee Recreeariony EU a ry
+
+ 
+   
+
+Ce Aias
+Cech
+
+ 
+
+ai Leeinae |
+
+Pu od
+Poe oe
+Pee as
+
+Piel eae
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+   
+
+15:57
+OEE
+
+===== 06-calamares.png =====
+ 
+
+fe Dt cr AVS e
+
+ies
+Sane.
+
+ 
+
+Ase
+
+eee a
+os Deco ecu
+
+    
+   
+ 
+         
+
+ 
+
+Reena Tn eas - ao x
+STAC od Fella
+
+ 
+
+ 
+
+  
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+f Sunshine OS Installer aa o pa ] _ o
+ak IN
+vauccnnmeey | an NV CefeYont-Maom ant Merl t-lort eM eiel (lamcom el ie Oe me)
+Welcom This program will ask you some questions and set up Sunshine OS on your computer.
+7 Location
+Keyboard
+ox (eapalircraly J Perens
+ad
+Tes
+
+5 co
+Coca IX
+Teh
+
+SUL nare]
+
+Hl vi rd
+® Settings Install es
+eos
+
+aia)
+
+c
+Ce Aias h
+SECRET Mare a
+
+eee eg 5
+Kr
+Seu ea Tad F
+i ami j aon
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+  
+
+Pu od
+Poe oe
+Pee as
+
+Piel eae
+
+ 
+
+es 15:57
+G@ od #O@an 35,4)
+
+===== 07-current.png =====
+Aner} las Dt ce cL e
+SCR.
+
+ 
+
+Ase
+
+eee a
+os Deco ecu
+
+    
+  
+  
+  
+ 
+ 
+  
+ 
+ 
+ 
+ 
+  
+
+  
+
+Reena Tn eas - ao x
+SSCs rod - ao x
+
+  
+ 
+  
+ 
+ 
+ 
+ 
+ 
+  
+   
+ 
+ 
+ 
+   
+  
+     
+  
+
+ 
+
+ 
+
+Tol - o pd
+a
+
+PCE ka
+g
+5
+q Pac)
+
+ 
+
+ 
+  
+  
+ 
+  
+  
+  
+
+| Cea oS Petra
+
+ 
+  
+
+Ea 4
+CT Pate Nia BYurmg
+Doe Loil
+Undo a bad che
+
+S| cy I = c
+
+fl Rene aes eres ates eon een er ace)
+Pay
+ea
+
+oa a A 2
+c Re Rey eet) Senet aes PER
+
+ 
+   
+
+Ce Aias
+Cech
+
+ 
+
+ai Leeinae |
+
+Pu od
+Poe oe
+Pee as
+
+Piel eae
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+   
+
+& 16:03
+LO@ga jr, OG
+
+===== 08-calamares-x11.png =====
+ 
+
+is las Dt rr cL
+CMe ne e
+
+ 
+
+Ase
+
+eee a
+os Deco ecu
+
+     
+   
+    
+ 
+  
+ 
+ 
+ 
+ 
+  
+  
+ 
+   
+
+ 
+
+ 
+
+Sunshine OS Installer
+
+ 
+
+Ni Cetey nat om sa Mer- TE Tiree teem Oa ay
+This program will ask you some questions and set up Sunshine OS on your computer.
+
+Location
+
+Keyboard
+
+Partitions
+
+ceed
+
+Ne}
+eee oes
+Tae
+
+el e
+
+PER ok RI)
+
+ 
+
+is
+
+ali)
+
+a
+Bs EU a ry
+
+ 
+
+<
+nN orem an SI
+
+ 
+
+ 
+
+  
+ 
+
+ed
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Pu od
+Poe oe
+Pee as
+Piel
+
+eae
+
+  
+
+ 
+
+an oe me  ) A Go #*Ogr, 160 |
+
+===== 09-calamares-location.png =====
+ 
+
+     
+    
+  
+    
+ 
+   
+  
+ 
+  
+   
+  
+ 
+ 
+
+ 
+
+i las Dt cn cL
+CRP ZX e
+A
+a .
+eee a ;
+os Deco ecu
+°
+ae
+J
+ea a
+e
+a
+Bresson oes
+nl
+
+rN
+
+ 
+
+Ni Cetey nat om sa Mer- TE Tiree teem Oa ay
+
+This program will ask you some questions and set up Sunshine OS on your computer.
+
+Location
+Dey el
+ee Se
+
+Petdiiens eee) - oo x]
+
+Users Lc) Pee eee neh eteena totes
+
+Baas Sana eh eRe
+Silat lag ey Pra
+
+Tell e
+
+ 
+
+PER ok RI)
+
+   
+
+h
+
+  
+  
+
+a
+rs EU a ry
+
+ 
+
+<
+nN orem an SI
+
+ed
+
+ 
+
+ 
+
+ 
+
+   
+ 
+
+eae
+
+ 
+
+   
+
+an oe oe e ) A @ Go @gr 1604
+
+===== 10-vbox-gui-relaunch.png =====
+“oe Core
+
+oN mes:
+
+ 
+
+Une: ae
+Sano
+
+on
+
+tL
+
+ 
+ 
+
+ 
+
+ 
+
+Nero)
+
+) MW eo meds)
+
+You are running the live session. Nothing is changed on your computer until you install.
+
+Install Sunshine OS
+Put Sunshine OS on this computer
+
+Pac ac)
+
+ery
+
+® Settings
+
+ey
+
+[Eee eco)
+
+Rete
+
+CSc
+
+Poms
+
+Saas
+
+DRO)
+
+eau)
+
+ies
+
+Pao) ea
+
+  
+  
+          
+     
+   
+
+Close
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+é a UGHO
+@ga Jay, Gl
+
+===== 11-install-running.png =====
+Ce Cee re Sete eee cee alee as ed ee GPU 0% ry
+
+ 
+
+ 
+
+SCP
+ST eon - o x
+TUR Soa foray coed cat
+
+  
+
+Te UC Oye yas es VCE Yet OL
+Partitioning /dev/sda (bios)
+eet ie Ameen Cae
+Se CeCe ec Beton
+east
+ST URS cure Coe Tere)
+1,086,321,417B 11%  185MB/s _ 0:00:05 (xfr#4125, to-chk=353818/359623)
+
+Z
+| >
+
+Ta
+e y
+
+es 17:14
+OS EONS i
+
+    
+
+ 
+
+ 
+
+ 
+
+ 
+
+    
+
+===== 12-installed-boot.png =====
+acs ue
+
+  
+     
+ 
+   
+
+Sr
+ae me | NN
+
+ES
+
+ene Se ete ae ey
+
+===== 13-installed-desktop.png =====
+Cems las Dt ce cd re
+See
+
+     
+      
+       
+     
+   
+       
+       
+       
+ 
+ 
+  
+
+Deere)
+
+Welcome to Sunshine OS
+
+Rea cues o Sues Eur a
+
+  
+
+ 
+
+OS [MU Cees ale) ool ca oly
+Rese Se ee SCE Sen Rar Ue haa ear)
+x a BN y
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+CSTR Ceara)
+
+Pull the latest themes and apply them (works offline too) Thousands more apps
+x JX y
+
+Tee or RCM mg
+
+ 
+
+ 
+
+ 
+
+ 
+
+ety
+
+ 
+
+ 
+
+SC d Saar) Pa
+Dean aCe Cae eam eo Battery and noise control
+
+     
+
+ 
+
+ 
+
+   
+    
+   
+ 
+   
+    
+  
+ 
+     
+
+  
+
+aac ea
+Seats Pe ke Me Unc)
+x J 4)
+
+ 
+
+ 
+
+ 
+
+RUA Sco}
+
+ 
+
+Saas
+
+  
+
+STE aos
+‘An egg appeared! Keep the app running
+Cones
+
+ 
+
+Eo
+
+ 
+
+m@eae® Cee a en
+
+===== 14-installed-reboot.png =====
+
+===== 15-kate-actions.png =====
+4 CS
+Oe eR oC ee aa oa beta meted
+
+as a
+
+   
+
+Cerne cs aed
+
+ne rr cor rer
+
+  
+
+      
+ 
+ 
+  
+ 
+ 
+  
+
+Cae!
+
+A friendly
+hello sunshine
+
+@ Get aj
+Ce
+
+CSS
+Cras
+
+ 
+
+Lr
+Health ci
+
+eacs
+SoTavigt
+
+a reat fale
+
+ 
+
+y, 4
+
+ 
+
+ 
+
+4:53 PM
+attr yr) Go
+
+ 
+
+===== 15-kate-crop.png =====
+So Cd n= eed
+
+ne rr cor rer ir
+
+   
+
+CCU named cal
+
+hello sunshine
+
+hots)
+
+ 
+
+===== 15-kate-window.png =====
+Cea
+
+rr
+
+Cae!
+
+ 
+
+hello sunshine
+
+ 
+
+===== 16-kate-active.png =====
+4 PS IN
+ee RC Ce eC oy bea alcey We aaietated
+
+os a
+
+   
+
+Cerne cs aed
+
+ne rr cor rer
+
+  
+
+      
+ 
+ 
+  
+ 
+ 
+  
+
+Cae!
+
+A friendly
+mello sunshine
+
+@ Get aj
+Ce
+
+CSS
+Cras
+
+ 
+
+Lr
+Health ci
+
+eacs
+SoTavigt
+
+a reat fale
+
+ 
+
+y, 4
+
+ 
+
+ 
+
+4:55 PM
+arr yP)3 Go
+
+ 
+
+===== 16-kate-active-window.png =====
+Cea
+
+rr
+
+Cae!
+
+ 
+
+hello sunshine
+
+ 
 
