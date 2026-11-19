@@ -82,10 +82,13 @@
    [ -n "$msg" ] || msg=$(_tool_message)
    [ -n "$msg" ] && args+=("--title=$msg")
    [ "$SUN_NIGHT" = 1 ] && args+=(--night)
-   if [ -r "$p" ] && command -v python3 >/dev/null 2>&1; then
-     python3 "$p" "${args[@]}" 2>/dev/null && return 0
+   # Old players ignore unknown flags: without --tool support they would run the endless site animation and hang the tool.
+   # Only use the sprite player when it actually supports tool mode, and bound it with a timeout as a second guard.
+   if [ -r "$p" ] && command -v python3 >/dev/null 2>&1 && grep -q -- '--tool' "$p" 2>/dev/null; then
+     local runner=''; command -v timeout >/dev/null 2>&1 && runner='timeout 15'
+     $runner python3 "$p" "${args[@]}" 2>/dev/null && return 0
    fi
-   # fallback when the sprite player is not installed: a small coloured logo line, still no animation on failure
+   # fallback when the sprite player is missing or too old: a small coloured logo line, still no animation on failure
    printf '%s☀%s  %s\n' "$([ "$SUN_NIGHT" = 1 ] && printf '%s' "$PINE" || printf '%s' "$Y")" "$N" "$(loc "$msg")"
  }
  sun_run() {            # sun_run "label" cmd args...
