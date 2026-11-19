@@ -35,7 +35,7 @@ The detailed enterprise case is in [`enterprise-readiness.md`](enterprise-readin
 7. Installed to the 20 GiB disk with the non-interactive CLI path (btrfs, GRUB, Hyprland layer, 114/114 packages).
 8. Injected the updater fix, removed the ISO, rebooted from disk, enabled autologin for the visual pass, and verified the installed system.
 9. Ran a full `pacman -Syu` (kernel 7.3.4 → 7.3.5), rebooted, and re-verified.
-10. Ran the fixed `sunshine-update` end to end, including tools sync, Arch news, mirrors, Flatpak and first-update apps.
+10. Ran the fixed `sunshine-update` through tools sync, Arch news, mirrors, Flatpak, health check and into the first-update app install (LibreOffice/Zen was still downloading when the log was captured).
 11. Audited the installed system for enterprise capabilities and visual consistency.
 
 Evidence: [`raw/`](raw/), [`screenshots/`](screenshots/) (OCR in [`screenshots/ocr.txt`](screenshots/ocr.txt)), [`live-session.md`](live-session.md), [`update-internet-gate.md`](update-internet-gate.md).

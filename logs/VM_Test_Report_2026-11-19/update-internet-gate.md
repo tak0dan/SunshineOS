@@ -91,7 +91,7 @@ After the installed system's first `pacman -Syu`, `sunshine-base` upgraded **0.6
 5. raw TCP to `1.1.1.1:443`, `8.8.8.8:53`, `9.9.9.9:443`;
 6. **ping only as the last resort.**
 
-This is the correct design and it completely fixes the false-offline failure in NAT/corporate networks. The full run then completed:
+This is the correct design and it completely fixes the false-offline failure in NAT/corporate networks. The updater then completed all update phases (the log ends while the first-update apps are still downloading):
 
 ```text
 ☀ Sunshine OS update

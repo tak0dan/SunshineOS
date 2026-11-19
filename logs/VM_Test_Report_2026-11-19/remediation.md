@@ -47,7 +47,7 @@ The installed system upgraded `sunshine-base 0.6-1 → 0.7-1` during `pacman -Sy
 
 ### Verified result
 
-After the update, the full `sunshine-update` run completed:
+After the update, the fixed `sunshine-update` run completed all update phases:
 
 ```text
 ✔ Internet reachable (HTTPS archlinux.org)
@@ -57,6 +57,8 @@ After the update, the full `sunshine-update` run completed:
 ✔ Restore points are made automatically before and after the update
 ✔ All good
 ```
+
+The captured log ends at “Apps you chose” while `sunshine-app-libreoffice` and `sunshine-app-zen` were still downloading; the core update, Flatpak step and health check were already complete.
 
 Evidence: [`raw/update-final.log`](raw/update-final.log), [`raw/final-verify.log`](raw/final-verify.log).
 
