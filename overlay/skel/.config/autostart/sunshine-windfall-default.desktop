@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Windfall default effect
+Exec=/usr/local/bin/sunshine-windfall-default
+OnlyShowIn=Hyprland;
+X-KDE-autostart-phase=2
+NoDisplay=true

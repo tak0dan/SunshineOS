@@ -1,0 +1,11 @@
+# Sunshine OS uses NetworkManager. The live ISO boots as a "first boot" (empty machine-id), so systemd applies
+# presets on every live boot, and systemd's own 90-systemd.preset would enable systemd-networkd next to
+# NetworkManager: both then manage the same interface (duplicate DHCP routes, resolved "LinkBusy" errors, and
+# systemd-networkd-wait-online delaying the boot). The first matching line wins, so these override 90-systemd.preset.
+# The installed system gets the same rules (see also migrations/0005-faster-boot.sh).
+disable systemd-networkd.service
+disable systemd-networkd.socket
+disable systemd-networkd-varlink.socket
+disable systemd-networkd-varlink-metrics.socket
+disable systemd-networkd-resolve-hook.socket
+disable systemd-networkd-wait-online.service

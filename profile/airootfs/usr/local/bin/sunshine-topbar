@@ -1,6 +1,6 @@
 #!/bin/bash
-# Sunshine top bar (after Garuda Dr460nized, plus live graphs): live graphs (network, disk, CPU, GPU) on the left, the clock exactly in the middle,
-# weather and the user switcher on the right; no global menu. Run inside a Plasma session; `sunshine-topbar remove` takes it away.
+# Sunshine top bar (after Garuda Dr460nized, plus live graphs): weather and the user switcher on the left, the clock exactly in the middle,
+# live graphs (network, disk, CPU, GPU) on the right; no global menu. Run inside a Plasma session; `sunshine-topbar remove` takes it away.
 Q=$(command -v qdbus6 || command -v qdbus) || exit 1
 if [ "${1:-}" = remove ]; then
   "$Q" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'for (var p of panels()) if (p.location=="top") p.remove();' >/dev/null; exit 0
@@ -22,9 +22,9 @@ for try in 1 2 3 4; do
 for (var q of panels()) if (q.location=="top") q.remove();
 var W = screenGeometry(0).width, L = Math.floor(W * 0.4), C = W - 2 * L, H = Math.round(gridUnit * 1.9);
 function mk(al, len, ws) { var t = new Panel; t.location = "top"; t.floating = false; t.alignment = al; t.height = H; t.hiding = "none"; t.opacityMode = "opaque"; t.lengthMode = "custom"; t.minimumLength = len; t.maximumLength = len; for (var w of ws) t.addWidget(w); return t }
-mk("left", L, ["com.sunshineos.graphs", "org.kde.plasma.panelspacer"]);
+mk("left", L, ["org.kde.plasma.weather", "org.kde.plasma.userswitcher", "org.kde.plasma.panelspacer"]);
 mk("center", C, ["org.kde.plasma.panelspacer", "org.kde.plasma.digitalclock", "org.kde.plasma.panelspacer"]);
-mk("right", L, ["org.kde.plasma.panelspacer", "org.kde.plasma.weather", "org.kde.plasma.userswitcher"]);
+mk("right", L, ["org.kde.plasma.panelspacer", "com.sunshineos.graphs"]);
 ' >/dev/null 2>&1
   sleep 10
 done

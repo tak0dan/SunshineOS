@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Windfall (the weather overlay of the Hyprland edition) starts with the "lights" effect on the first Hyprland session of a user; after that the
+# user's own choice (tray, controller, windfallctl) is never touched. Does nothing outside Hyprland or without Windfall.
+[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || exit 0
+command -v windfallctl >/dev/null || exit 0
+MARK=${XDG_CONFIG_HOME:-$HOME/.config}/sunshine/windfall-default-done
+[ -e "$MARK" ] && exit 0
+for _ in $(seq 1 20); do windfallctl effect lights >/dev/null 2>&1 && { mkdir -p "$(dirname "$MARK")"; touch "$MARK"; exit 0; }; sleep 2; done
+exit 0

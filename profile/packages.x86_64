@@ -106,6 +106,8 @@ zsh
 
 # --- Sunshine OS desktop ---
 plasma-desktop
+kdeplasma-addons
+inetutils
 plasma-nm
 plasma-pa
 plasma-systemmonitor

@@ -8,7 +8,20 @@ finish() { echo; [ -n "${SUNSHINE_UPDATE_HERE:-}" ] || read -rp "Press Enter to 
 [ "$(id -u)" -eq 0 ] || exec pkexec "$0" "$@"
 REAL_USER=${PKEXEC_UID:+$(getent passwd "$PKEXEC_UID" | cut -d: -f1)}
 
+# The live session (not sunshine-rescue's chroot): the root is a RAM overlay and the running kernel comes from the ISO. Upgrading the kernel
+# package there deletes /usr/lib/modules/<running kernel>, so no further module can load (nf_tables, USB, btrfs for the installer...).
+# Updating stays possible (useful for testing), but the kernel package that owns the running kernel's modules is held back.
+HOLD=""
+if [ -d /run/archiso ] && [ -z "${SUNSHINE_IN_RESCUE:-}" ]; then
+  kpkg=$(pacman -Qqo "/usr/lib/modules/$(uname -r)" 2>/dev/null | head -1)
+  [ -n "$kpkg" ] && HOLD="--ignore $kpkg,$kpkg-headers"
+  printf '\n%sThis is the live session.%s Updates here live in memory and are gone after a restart; to update for good, install Sunshine OS first.\n' "$Y$B" "$N"
+  [ -n "$kpkg" ] && printf '  The running kernel (%s) is kept: upgrading it here would remove the drivers of the kernel that is running.\n' "$kpkg"
+  read -rp "Update the live session anyway? [y/N] " a; [ "${a,,}" = y ] || finish 0
+fi
+
 say "Sunshine OS update"
+printf '%sGood to know:%s while the update runs you may see lines such as "WARNING: Possibly missing firmware for module: qat_6xxx" or "consolefont: no font found".\n  They come from building the boot image, are normal on Arch systems and mean only that this computer has no such device: you can ignore them.\n  Real problems are listed in a summary at the end, and the whole output is kept in /var/log/sunshine/update.log.\n' "$Y$B" "$N"
 # the newest Sunshine tools first (signed release from the tools repository): a repair tool fixed yesterday works today, without a new ISO
 if [ -x /usr/local/bin/sunshine-toolsync ]; then say "Sunshine tools"; /usr/local/bin/sunshine-toolsync update || true; fi
 /usr/local/bin/sunshine-repo ensure --quiet   # the [sunshine] repository must be in pacman.conf (it can be lost with a merged pacman.conf)
@@ -83,7 +96,7 @@ pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null 2>&1 && ok "Package
 run_update() {
   local log rc reason extra=()
   mkdir -p /var/log/sunshine; log=$(mktemp)
-  LANG=C script -qefc "pacman -Su" "$log"; rc=$?      # script keeps the terminal live (prompts, progress) and records the output
+  LANG=C script -qefc "pacman -Su $HOLD" "$log"; rc=$?      # script keeps the terminal live (prompts, progress) and records the output
   cat "$log" >> /var/log/sunshine/update.log
   [ "$rc" -eq 0 ] && { rm -f "$log"; return 0; }
   reason=$(sed 's/\x1b\[[0-9;]*[A-Za-z]//g' "$log" | tr -d '\r' | grep -oP '(?<=error: failed to commit transaction \().*(?=\))' | tail -1)
@@ -101,14 +114,14 @@ run_update() {
     *) rm -f "$log"; return 1 ;;
   esac
   rm -f "$log"; local log2; log2=$(mktemp)
-  LANG=C script -qefc "pacman -Su ${extra[*]}" "$log2"; rc=$?
+  LANG=C script -qefc "pacman -Su $HOLD ${extra[*]}" "$log2"; rc=$?
   cat "$log2" >> /var/log/sunshine/update.log; rm -f "$log2"
   return $rc
 }
 if grep -qE 'subvol=@?/.snapshots/[0-9]+/snapshot' /proc/cmdline; then bad "You booted into a restore point (snapshot): updating here would be lost or break it. Restore it first from the boot menu or sunshine-snapshot, then update."; finish 1; fi
 if run_update; then ok "System packages are up to date"
   # a new sunshine-base may bring new repositories (Chaotic-AUR): add them now and update once more
-  rm -f /run/sunshine-repo-changed; /usr/local/bin/sunshine-repo ensure --quiet; [ -e /run/sunshine-repo-changed ] && { say "New repository added: updating again"; pacman -Syu --noconfirm; }
+  rm -f /run/sunshine-repo-changed; /usr/local/bin/sunshine-repo ensure --quiet; [ -e /run/sunshine-repo-changed ] && { say "New repository added: updating again"; pacman -Syu --noconfirm $HOLD; }
   command -v rate-mirrors >/dev/null || { pacman -S --noconfirm --needed rate-mirrors >/dev/null 2>&1 && refresh_mirrors; }
 else bad "The system update did not finish. Nothing is broken by stopping; you can run the update again."; finish 1; fi
 
