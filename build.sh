@@ -28,7 +28,7 @@ docker run --rm --privileged -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e FA
     if [ "${SUNSHINE_EDITION,,}" != sirius ]; then
       sed -i "/^nix$/d" /profile/packages.x86_64; rm -f /profile/airootfs/etc/systemd/system/multi-user.target.wants/nix-daemon.service
       echo "edition: ${SUNSHINE_EDITION} (no Nix)"
-    else cp -a /sirius/. /profile/airootfs/; sed -i 's/"1.5"/"0.3"/; s/Sunshine OS 1.5/Sunshine OS Sirius 0.3/; s/Sunshine 1.5/Sunshine Sirius 0.3/' /profile/airootfs/etc/calamares/branding/sunshine/branding.desc; echo "edition: Sirius (declarative: Nix and sunshine-declare included)"; fi
+    else cp -a /sirius/. /profile/airootfs/; sed -i "s/\"1.5\"/\"0.3\"/; s/Sunshine OS 1.5/Sunshine OS Sirius 0.3/; s/Sunshine 1.5/Sunshine Sirius 0.3/" /profile/airootfs/etc/calamares/branding/sunshine/branding.desc; echo "edition: Sirius (declarative: Nix and sunshine-declare included)"; fi
     rm -rf /work/* /work/.[!.]*
     out=/out
     if [ -n "$FAST" ]; then   # test build: light compression (minutes, not an hour), bigger image, written to out/fast/
