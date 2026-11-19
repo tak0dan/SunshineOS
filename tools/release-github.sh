@@ -4,7 +4,7 @@
 #   SunshineOS_<D>.<M>.<months>.<big>.<small>_<Release|Beta|Testing>_<date>.iso     (naming: see below)
 # and the website's release.json lists the parts, so the download button always serves the newest release.
 #   tools/release-github.sh                      split + upload (DRY=1 only prints what it would do)
-#   SITE_DIR=<clone of the site repo> DOWNLOAD_URL=<Worker URL> tools/release-github.sh     also write SITE_DIR/release.json
+#   (the site updates itself, see docs/RELEASING.md; SITE_DIR=<clone> DOWNLOAD_URL=<Worker URL> still writes SITE_DIR/release.json by hand)
 #   JSON_ONLY=1 SITE_DIR=... DOWNLOAD_URL=... tools/release-github.sh                       only rewrite release.json from the release
 #   ISO=/path/to/file.iso tools/release-github.sh   publish that file instead of the newest ISO in out/
 # Needs: gh (logged in), rsync not required.
@@ -51,6 +51,13 @@ if [ -z "${JSON_ONLY:-}" ]; then
     --notes "Sunshine OS $rel ($channel), released $day. Download it from https://tak0dan.github.io/sunshineos-site/ . The ISO is stored here in parts (GitHub's 2 GiB file limit) and served as one file \`$pub\`; to join the parts by hand: \`cat $pub.part* > $pub\` and check it with \`sha256sum -c $pub.sha256\`."
 fi
 
+# The website follows the releases by itself (workflow "release-json" in the site repository, every 15 minutes). Ask it to run right now, so the
+# page shows the new release within a minute or two. Best effort: when this fails, the scheduled run does it later.
+if [ -z "${DRY:-}" ] && [ -z "${JSON_ONLY:-}" ] && [ -n "${SITE_REPO:-tak0dan/sunshineos-site}" ]; then
+  gh workflow run release-json.yml --repo "${SITE_REPO:-tak0dan/sunshineos-site}" >/dev/null 2>&1 && echo "site: release-json workflow started" || echo "site: could not start the workflow (the scheduled run will pick the release up)"
+fi
+
+# Optional and no longer needed: write release.json into a local clone of the site by hand (SITE_DIR). The workflow above overwrites it with the same content.
 if [ -n "${SITE_DIR:-}" ] && [ -z "${DRY:-}" ]; then
   gh release view "$tag" --repo "$REPO" --json assets > out/.assets.json
   python3 - "$SITE_DIR/release.json" "$rel" "$day" "$pub" "$tag" "${DOWNLOAD_URL:-}" "out/.assets.json" "$(sha256sum < "$iso" | cut -d' ' -f1)" "$channel" "$edition" <<'PY'
