@@ -20,6 +20,13 @@ LITE = '--lite' in ARGS
 SPLASH = '--splash' in ARGS
 ONCE = '--once' in ARGS
 MODE = next((a.split('=', 1)[1] for a in ARGS if a.startswith('--mode=')), None)
+# Tool mode: a compact, in-place version of the website animation for the Sunshine command-line tools.
+# The middle text starts as "Sunshine OS" and becomes the tool-specific message on success. There is no
+# failure mode here: tools only call it after a successful run; failures print the error and a fix hint.
+TOOL = '--tool' in ARGS
+TOOL_TITLE = next((a.split('=', 1)[1] for a in ARGS if a.startswith('--title=')), '')
+NIGHT = '--night' in ARGS
+TOOL_SECONDS = float(next((a.split('=', 1)[1] for a in ARGS if a.startswith('--seconds=')), '2.6'))
 M = json.load(open(os.path.join(HERE, 'sprite-lite.json' if LITE else 'sprite.json')))
 FPS, FW, FH, COLS = M['fps'], M['frame_w'], M['frame_h'], M['cols']
 INTRO_N, LOOP_N = M['intro']['frames'], M['loop']['frames']
@@ -284,10 +291,78 @@ def run_client(mode, rows, cols, cw, ch):
         if ONCE and now > INTRO_DUR + 10.5: break
     return cleanup
 
+# ---------------------------------------------------------------- tool mode (success animation)
+def tool_tint(frame):
+    """Recolour the sprite with the day (gold/orange) or night (rose-pine pastel blue/pink) palette."""
+    a = frame[..., 3] > 0
+    h, w = a.shape
+    x = np.arange(w)[None, :]
+    lum = (frame[..., 0].astype(np.float32) + frame[..., 1] + frame[..., 2]) / (3 * 255)
+    if NIGHT:
+        base = np.stack([np.where(x < w / 2, 156, 234),
+                         np.where(x < w / 2, 207, 154),
+                         np.where(x < w / 2, 216, 151)], -1)
+        hi = np.array([196, 167, 231], np.float32)     # iris
+    else:
+        base = np.stack([np.full((1, w), 255),
+                         np.full((1, w), 196),
+                         np.full((1, w), 61)], -1)
+        hi = np.array([255, 122, 26], np.float32)      # warm orange
+    t = np.clip(lum * 0.7, 0, 1)[..., None]
+    rgb = np.clip(base.astype(np.float32) * (1 - t) + hi * t, 0, 255).astype(np.uint8)
+    out = frame.copy()
+    out[..., :3] = rgb
+    out[..., 3] = np.where(a, 255, 0).astype(np.uint8)
+    return out
+
+
+def run_tool():
+    """Small in-place animation: sprite frames + a message that changes from the OS name to the tool result."""
+    rows, cols, _, _ = winsize()
+    fi = sheet_frames('intro')
+    y0, y1, x0, x1 = crop_box(fi)
+    fi = [f[y0:y1, x0:x1] for f in fi]
+    if not fi:
+        return
+    h, wd = fi[0].shape[:2]
+    d = 1
+    while (-(-h // d) + 1) // 2 + 3 > rows or -(-wd // d) > min(cols, 44):
+        d += 1
+        if d > 8:
+            raise SystemExit('terminal too small for the logo animation')
+    if d > 1:
+        fi = [f[::d, ::d] for f in fi]
+        h, wd = fi[0].shape[:2]
+    r_cells = (h + 1) // 2
+    top = max(1, (rows - r_cells - 3) // 2 + 1)
+    left = max(1, (cols - wd) // 2 + 1)
+    row = top + r_cells + 1
+    bl = Blocks()
+    colour = '\x1b[38;2;196;167;231m' if NIGHT else '\x1b[38;2;255;196;61m'
+    brand = 'S U N S H I N E   O S'
+    end = TOOL_TITLE or 'All done'
+    n = min(len(fi), max(4, int(TOOL_SECONDS * FPS)))
+    mid = n // 2
+    w('\x1b[?25l')
+    try:
+        for i in range(0, n, 2):
+            bl.render(tool_tint(fi[i]), top, left)
+            msg = brand if i < mid else end
+            w(f'\x1b[{row};{max(1, (cols - len(msg)) // 2 + 1)}H\x1b[K{colour}{msg}\x1b[0m')
+            out.flush()
+            if i + 2 < n:
+                time.sleep(min(0.09, 2 / FPS))
+    finally:
+        w('\x1b[0m\x1b[?25h\n')
+        out.flush()
+
+
 # ---------------------------------------------------------------- main
 def main():
     if not sys.stdout.isatty():
         print('run this in a terminal'); return
+    if TOOL:
+        run_tool(); return
     rows, cols, _, _ = winsize()
     old = termios.tcgetattr(IN); tty.setcbreak(IN)
     cleanup = lambda: None

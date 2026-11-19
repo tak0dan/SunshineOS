@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Safe, friendly full-system update. Runs as root (via pkexec).
+# Safe, friendly full-system update. Runs as root: sudo in a terminal, polkit from a launcher.
 set -u
 # shellcheck disable=SC2034 # fallback colour names mirror ui.sh even when some are unused here
-[ -r /usr/local/lib/sunshine/ui.sh ] && . /usr/local/lib/sunshine/ui.sh || { B=; Y=; G=; R=; N=; say() { echo "* $*"; }; ok() { echo "+ $*"; }; bad() { echo "x $*"; }; loc() { printf '%s' "$*"; }; t() { printf '%s' "${2:-$1}"; }; cozy_done() { :; }; sun_success_anim() { :; }; }
+[ -r /usr/local/lib/sunshine/ui.sh ] && . /usr/local/lib/sunshine/ui.sh || { B=; Y=; G=; R=; N=; say() { echo "* $*"; }; ok() { echo "+ $*"; }; bad() { echo "x $*"; }; loc() { printf '%s' "$*"; }; t() { printf '%s' "${2:-$1}"; }; cozy_done() { :; }; sun_success_anim() { :; }; sun_exec_priv() { if [ "$(id -u)" -eq 0 ]; then exec "$@"; fi; if [ -t 0 ] && [ -t 1 ]; then exec sudo "$@"; fi; exec pkexec "$@"; }; }
 finish() { echo; [ -n "${SUNSHINE_UPDATE_HERE:-}" ] || read -rp "Press Enter to close this window." _; exit "${1:-0}"; }   # run from a terminal (SUNSHINE_UPDATE_HERE): no window to close
 
-[ "$(id -u)" -eq 0 ] || exec pkexec "$0" "$@"
-REAL_USER=${PKEXEC_UID:+$(getent passwd "$PKEXEC_UID" | cut -d: -f1)}
+# A terminal asks for the password in that terminal; only a desktop launcher uses the polkit prompt.
+[ "$(id -u)" -eq 0 ] || sun_exec_priv "$0" "$@"
+REAL_USER=${SUDO_USER:-}                            # sudo keeps the invoking user here
+if [ -z "$REAL_USER" ] && [ -n "${PKEXEC_UID:-}" ]; then REAL_USER=$(getent passwd "$PKEXEC_UID" | cut -d: -f1); fi  # polkit uses PKEXEC_UID
 
 # The live session (not sunshine-rescue's chroot): the root is a RAM overlay and the running kernel comes from the ISO. Upgrading the kernel
 # package there deletes /usr/lib/modules/<running kernel>, so no further module can load (nf_tables, USB, btrfs for the installer...).
@@ -157,8 +159,10 @@ say "Apps you chose"
 say "Health check"
 /usr/local/bin/sunshine-doctor --fix --quiet || true
 [ -n "${REAL_USER:-}" ] && { sudo -u "$REAL_USER" /usr/local/bin/sunshine-update-check seen; sudo -u "$REAL_USER" /usr/local/bin/sunshine-update-check --quiet; } >/dev/null 2>&1
-ok "$(t all_done "All done")"
+if [ "$SUN_NIGHT" = 1 ]; then ok "$(t all_done_night "All done for tonight")"; else ok "$(t all_done "All done")"; fi
 [ -x /usr/local/bin/sunshine-diagnose ] && [ -n "${REAL_USER:-}" ] && sudo -u "$REAL_USER" /usr/local/bin/sunshine-diagnose --after-update >/dev/null 2>&1 &
 [ "$(sun_conf visuals_on_update off 2>/dev/null)" = on ] && [ -n "${REAL_USER:-}" ] && sudo -u "$REAL_USER" /usr/local/bin/sunshine-restore-visuals >/dev/null 2>&1
-sun_success_anim; cozy_done
+# The logo animation ends with the tool-specific message (night: a blue/pink logo and a rest message).
+if [ "$SUN_NIGHT" = 1 ]; then sun_success_anim "$(t update_done_night "Rest well, sunshine 🌙")"; else sun_success_anim "$(t update_done "System updated")"; fi
+cozy_done
 finish 0
