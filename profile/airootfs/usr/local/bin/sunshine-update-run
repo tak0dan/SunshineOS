@@ -22,6 +22,18 @@ if [ -d /run/archiso ] && [ -z "${SUNSHINE_IN_RESCUE:-}" ]; then
   read -rp "Update the live session anyway? [y/N] " a; [ "${a,,}" = y ] || finish 0
 fi
 
+# The live session (not sunshine-rescue's chroot): the root is a RAM overlay and the running kernel comes from the ISO. Upgrading the kernel
+# package there deletes /usr/lib/modules/<running kernel>, so no further module can load (nf_tables, USB, btrfs for the installer...).
+# Updating stays possible (useful for testing), but the kernel package that owns the running kernel's modules is held back.
+HOLD=""
+if [ -d /run/archiso ] && [ -z "${SUNSHINE_IN_RESCUE:-}" ]; then
+  kpkg=$(pacman -Qqo "/usr/lib/modules/$(uname -r)" 2>/dev/null | head -1)
+  [ -n "$kpkg" ] && HOLD="--ignore $kpkg,$kpkg-headers"
+  printf '\n%sThis is the live session.%s Updates here live in memory and are gone after a restart; to update for good, install Sunshine OS first.\n' "$Y$B" "$N"
+  [ -n "$kpkg" ] && printf '  The running kernel (%s) is kept: upgrading it here would remove the drivers of the kernel that is running.\n' "$kpkg"
+  read -rp "Update the live session anyway? [y/N] " a; [ "${a,,}" = y ] || finish 0
+fi
+
 say "Sunshine OS update"
 printf '%sGood to know:%s while the update runs you may see lines such as "WARNING: Possibly missing firmware for module: qat_6xxx" or "consolefont: no font found".\n  They come from building the boot image, are normal on Arch systems and mean only that this computer has no such device: you can ignore them.\n  Real problems are listed in a summary at the end, and the whole output is kept in /var/log/sunshine/update.log.\n' "$Y$B" "$N"
 # the newest Sunshine tools first (signed release from the tools repository): a repair tool fixed yesterday works today, without a new ISO
