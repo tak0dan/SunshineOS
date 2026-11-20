@@ -80,6 +80,12 @@ class CliFixtureTests(unittest.TestCase):
             self.assertEqual(second["status"], "success")
             self.assertFalse(second["changed"], "repeated apply must make no changes")
 
+            code, out, err = run_cli(*args)
+            self.assertEqual(code, 0, err)
+            third = parse_json(out)
+            self.assertEqual(third["status"], "success")
+            self.assertFalse(third["changed"], "every later apply must remain a no-op")
+
     def test_dry_run_does_not_create_state(self):
         with tempfile.TemporaryDirectory(prefix="sunshine-cli-dry-") as tmp:
             code, out, err = run_cli(
