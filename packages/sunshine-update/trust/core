@@ -1,0 +1,5 @@
+#!/bin/sh
+# Signed Stage A handoff target. The Rust bootstrap verifies this exact file,
+# then execs it with --trust-report/--trust-receipt. Keep it small and stable.
+ROOT=${SUNSHINE_EVOLUTION_ROOT:-/usr/share/sunshine/evolution}
+exec python3 "$ROOT/src/engine.py" "$@"

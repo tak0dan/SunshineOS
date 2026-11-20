@@ -1,0 +1,10 @@
+{
+  "package_database": "compatible",
+  "package_manager": "compatible",
+  "boot_architecture": "supported",
+  "filesystem": "supported",
+  "repository_trust": "verified",
+  "inventory": "complete",
+  "configuration_schema": "identified",
+  "migration_workspace": "available"
+}

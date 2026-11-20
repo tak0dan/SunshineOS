@@ -1,0 +1,17 @@
+[package]
+name = "sunshine-bootstrap"
+version = "1.0.0"
+edition = "2021"
+description = "Small trust root and handoff bootstrap for the Sunshine Evolution Engine"
+license = "MIT"
+
+[[bin]]
+name = "sunshine-bootstrap"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

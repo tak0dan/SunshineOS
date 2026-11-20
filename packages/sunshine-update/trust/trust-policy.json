@@ -1,0 +1,14 @@
+{
+  "pinned_roots": [
+    "2FEC611A7F97ED9A37294C90D16F3BE763A4B6BE"
+  ],
+  "local_protocol": 1,
+  "local_bootstrap_version": "1.2.0",
+  "require_artifact_signatures": true,
+  "allow_key_rotation": false,
+  "required_privileged_channel": "polkit",
+  "receipt_signing": {
+    "fingerprint": "2FEC611A7F97ED9A37294C90D16F3BE763A4B6BE",
+    "gpg_home": "/etc/sunshine/trust/receipt-home"
+  }
+}

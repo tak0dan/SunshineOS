@@ -1,0 +1,4 @@
+# <file system> <dir> <type> <options> <dump> <pass>
+UUID=11111111-2222-3333-4444-555555555555 / btrfs rw,relatime,subvol=@ 0 0
+UUID=11111111-2222-3333-4444-555555555555 /home btrfs rw,relatime,subvol=@home 0 0
+UUID=AAAA-BBBB /boot vfat rw,relatime,fmask=0022 0 2

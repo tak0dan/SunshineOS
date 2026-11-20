@@ -1,0 +1,8 @@
+[components.core]
+schema = 1
+software_version = "1.0.0"
+status = "active"
+[components.configuration]
+schema = 1
+software_version = "1.0.0"
+status = "active"
