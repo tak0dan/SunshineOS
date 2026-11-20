@@ -8,6 +8,7 @@
 #   sunshine-apps first-update       install the apps marked "first update" in the catalogue (once)
 # Log: /var/log/sunshine/apps.log
 PEND=/var/lib/sunshine/pending; META=/usr/share/sunshine/apps.d; SETUP=/usr/share/sunshine/apps-setup; LOG=/var/log/sunshine/apps.log
+set -o pipefail   # an AUR helper failure must survive the live-progress pipe
 cmd=${1:-pending}; shift || true
 [ "$cmd" = pending ] || [ "$(id -u)" -eq 0 ] || exec sudo "$0" "$cmd" "$@"
 mkdir -p "$PEND" "$(dirname "$LOG")" 2>/dev/null
@@ -32,7 +33,12 @@ case "$cmd" in
         h=$(aur_helper)
         if [ -z "$h" ]; then log "$id: no AUR helper installed (paru/yay): kept in the queue"; ok=0
         elif ! online; then log "$id: offline: AUR packages wait for the internet"; ok=0
-        else log "$id: installing from the AUR: $aur"; sudo -u "$u" $h -S --needed --noconfirm $aur >> "$LOG" 2>&1 || { log "$id: AUR install failed (see $LOG)"; ok=0; }; fi
+        else
+          log "$id: installing from the AUR: $aur (live progress; full log $LOG)"
+          # Stream paru/yay progress into the update terminal *and* the log. Piping through tail here
+          # used to hide an AUR build for many minutes and made updates look frozen.
+          sudo -u "$u" $h -S --needed --noconfirm $aur 2>&1 | tee -a "$LOG" || { log "$id: AUR install failed (see $LOG)"; ok=0; }
+        fi
       fi
       if [ $ok = 1 ] && [ -n "$wurl" ]; then sudo -u "$u" env HOME="$home" sunshine-webapp add "$id" "$wname" "$wurl" >> "$LOG" 2>&1; fi
       if [ $ok = 1 ] && [ -n "$setup" ]; then

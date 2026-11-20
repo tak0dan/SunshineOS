@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Safe, friendly full-system update. Runs as root: sudo in a terminal, polkit from a launcher.
-set -u
+set -uo pipefail
 # shellcheck disable=SC2034 # fallback colour names mirror ui.sh even when some are unused here
 [ -r /usr/local/lib/sunshine/ui.sh ] && . /usr/local/lib/sunshine/ui.sh || { B=; Y=; G=; R=; N=; say() { echo "* $*"; }; ok() { echo "+ $*"; }; bad() { echo "x $*"; }; loc() { printf '%s' "$*"; }; t() { printf '%s' "${2:-$1}"; }; cozy_done() { :; }; sun_success_anim() { :; }; sun_exec_priv() { if [ "$(id -u)" -eq 0 ]; then exec "$@"; fi; if [ -t 0 ] && [ -t 1 ]; then exec sudo "$@"; fi; exec pkexec "$@"; }; }
 finish() { echo; [ -n "${SUNSHINE_UPDATE_HERE:-}" ] || read -rp "Press Enter to close this window." _; exit "${1:-0}"; }   # run from a terminal (SUNSHINE_UPDATE_HERE): no window to close
@@ -154,8 +154,10 @@ if [ -d /usr/lib/modules ] && ! [ -d "/usr/lib/modules/$(uname -r)" ]; then
   printf '\n%sThe kernel was updated. Please restart your computer when convenient.%s\n' "$Y" "$N"
 fi
 say "Apps you chose"
-/usr/local/bin/sunshine-apps apply 2>&1 | tail -5        # AUR packages, setup and web apps that were waiting for the internet
-/usr/local/bin/sunshine-apps first-update 2>&1 | tail -5 # LibreOffice, Zen ...: offered on the very first update (once)
+# Stream AUR builds live instead of hiding hours of work behind `tail`. sunshine-apps writes the
+# full record to /var/log/sunshine/apps.log and prints the same progress here.
+/usr/local/bin/sunshine-apps apply                      # AUR packages, setup and web apps that were waiting for the internet
+/usr/local/bin/sunshine-apps first-update               # LibreOffice, Zen ...: offered on the very first update (once)
 say "Health check"
 /usr/local/bin/sunshine-doctor --fix --quiet || true
 [ -n "${REAL_USER:-}" ] && { sudo -u "$REAL_USER" /usr/local/bin/sunshine-update-check seen; sudo -u "$REAL_USER" /usr/local/bin/sunshine-update-check --quiet; } >/dev/null 2>&1
