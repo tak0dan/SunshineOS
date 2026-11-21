@@ -27,6 +27,7 @@ TOOL = '--tool' in ARGS
 TOOL_TITLE = next((a.split('=', 1)[1] for a in ARGS if a.startswith('--title=')), '')
 NIGHT = '--night' in ARGS
 TOOL_SECONDS = float(next((a.split('=', 1)[1] for a in ARGS if a.startswith('--seconds=')), '2.6'))
+MAX_TEXT = int(next((a.split('=', 1)[1] for a in ARGS if a.startswith('--max-text=')), '15'))
 M = json.load(open(os.path.join(HERE, 'sprite-lite.json' if LITE else 'sprite.json')))
 FPS, FW, FH, COLS = M['fps'], M['frame_w'], M['frame_h'], M['cols']
 INTRO_N, LOOP_N = M['intro']['frames'], M['loop']['frames']
@@ -292,6 +293,19 @@ def run_client(mode, rows, cols, cw, ch):
     return cleanup
 
 # ---------------------------------------------------------------- tool mode (success animation)
+def fit_text(text, limit=None):
+    """Keep the strip text inside the line: collapse whitespace, then truncate with an ellipsis.
+
+    Tool output is often a full sentence; the middle line of the logo only has room
+    for about two short words, so the caller bounds it before drawing.
+    """
+    limit = MAX_TEXT if limit is None else limit
+    s = ' '.join(str(text or '').split())
+    if len(s) <= limit:
+        return s
+    return s[:max(1, limit - 1)].rstrip() + '…'
+
+
 def tool_tint(frame):
     """Recolour the sprite with the day (gold/orange) or night (rose-pine pastel blue/pink) palette."""
     a = frame[..., 3] > 0
@@ -317,7 +331,11 @@ def tool_tint(frame):
 
 
 def run_tool():
-    """Small in-place animation: sprite frames + a message that changes from the OS name to the tool result."""
+    """One-shot success animation: half sun, rising A, rays, then a line with the tool text.
+
+    Nothing repeats and there is no key/prompt wait. The final frame stays on screen
+    with the bounded tool message centred in the strip line.
+    """
     rows, cols, _, _ = winsize()
     fi = sheet_frames('intro')
     y0, y1, x0, x1 = crop_box(fi)
@@ -336,22 +354,37 @@ def run_tool():
     r_cells = (h + 1) // 2
     top = max(1, (rows - r_cells - 3) // 2 + 1)
     left = max(1, (cols - wd) // 2 + 1)
-    row = top + r_cells + 1
+    midrow = top + max(1, r_cells // 2)
     bl = Blocks()
     colour = '\x1b[38;2;196;167;231m' if NIGHT else '\x1b[38;2;255;196;61m'
-    brand = 'S U N S H I N E   O S'
-    end = TOOL_TITLE or 'All done'
+    room = max(4, min(MAX_TEXT, wd - 2))
+    brand = fit_text('SUNSHINE OS', room)
+    end = fit_text(TOOL_TITLE or 'All done', room)
     n = min(len(fi), max(4, int(TOOL_SECONDS * FPS)))
     mid = n // 2
+
+    def draw_strip(msg, reveal, line_reveal):
+        shown = msg[:max(0, int(len(msg) * reveal))]
+        span = max(0, min(wd, int(wd * line_reveal)))
+        pad = max(0, wd - len(shown))
+        left_pad = pad // 2
+        right_pad = pad - left_pad
+        prefix = '─' * min(left_pad, span // 2)
+        suffix = '─' * min(right_pad, span - len(prefix))
+        w(f'\x1b[{midrow};{left}H{colour}{prefix}{shown}{suffix}\x1b[0m')
+
     w('\x1b[?25l')
     try:
         for i in range(0, n, 2):
             bl.render(tool_tint(fi[i]), top, left)
-            msg = brand if i < mid else end
-            w(f'\x1b[{row};{max(1, (cols - len(msg)) // 2 + 1)}H\x1b[K{colour}{msg}\x1b[0m')
+            if i >= mid:
+                p = (i - mid) / max(1, n - mid - 1)
+                draw_strip(end, max(0.0, min(1.0, (p - 0.3) / 0.7)),
+                           max(0.0, min(1.0, p * 2)))
             out.flush()
             if i + 2 < n:
                 time.sleep(min(0.09, 2 / FPS))
+        draw_strip(end, 1.0, 1.0)
     finally:
         w('\x1b[0m\x1b[?25h\n')
         out.flush()
