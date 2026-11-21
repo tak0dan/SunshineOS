@@ -1,7 +1,7 @@
 # Maintainer: Sunshine OS <tools@sunshineos.local>
 pkgname=sunshine-update
 pkgver=0.9.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Stage A verified evolutionary migration engine for Sunshine OS"
 arch=(x86_64)
 options=(!debug)
@@ -17,6 +17,11 @@ optdepends=(
 conflicts=(sunshine-evolution-engine)
 source=()
 sha256sums=()
+
+prepare() {
+  cd "$startdir/engine"
+  sha256sum -c "$startdir/engine.sha256" >/dev/null
+}
 
 build() {
   cd "$startdir/engine/bootstrap-rust"

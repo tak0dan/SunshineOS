@@ -12,6 +12,7 @@ set -euo pipefail
 ROOT=${1:-$(cd "$(dirname "$0")/.." && pwd)}
 FP=${SUNSHINE_SIGNING_FP:-}
 [ -n "$FP" ] || { echo "SUNSHINE_SIGNING_FP is required" >&2; exit 2; }
+[[ "$FP" =~ ^[0-9A-Fa-f]{40}$ ]] || { echo "SUNSHINE_SIGNING_FP must be a 40-character hex fingerprint" >&2; exit 2; }
 command -v gpg >/dev/null || { echo "gpg is required" >&2; exit 2; }
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 2; }
 [ -f "$ROOT/trust/core" ] || { echo "missing signed core wrapper: $ROOT/trust/core" >&2; exit 2; }
@@ -19,12 +20,6 @@ chmod 755 "$ROOT/trust/core"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-sign_hex() { # path -> prints lowercase hex detached signature
-  local target=$1 sig="$TMP/sig"
-  rm -f "$sig"
-  gpg --batch --yes --detach-sign --no-armor --local-user "$FP" --output "$sig" "$target"
-  od -An -tx1 -v "$sig" | tr -d ' \n'
-}
 
 python3 - "$ROOT" "$FP" "$TMP" <<'PY'
 import hashlib, json, os, subprocess, sys
@@ -90,7 +85,16 @@ with open(os.path.join(root, "trust", "trust-policy.json"), "w", encoding="utf-8
 PY
 
 gpg --batch --yes --export "$FP" > "$TMP/public.asc"
-gpg --no-default-keyring --keyring "$ROOT/trust/repository-root.gpg" --batch --yes --import "$TMP/public.asc" >/dev/null 2>&1
+# Use a pristine GNUPGHOME for the dedicated keyring so host keyboxd settings
+# cannot cause --keyring to be ignored, mirroring the verifier hardening.
+EMPTY_GNUPGHOME="$TMP/gnupghome"
+mkdir -m 700 "$EMPTY_GNUPGHOME"
+gpg --homedir "$EMPTY_GNUPGHOME" --no-default-keyring \
+  --keyring "$ROOT/trust/repository-root.gpg" --batch --yes \
+  --import "$TMP/public.asc" >/dev/null 2>&1
+gpg --homedir "$EMPTY_GNUPGHOME" --no-default-keyring \
+  --keyring "$ROOT/trust/repository-root.gpg" --batch \
+  --list-keys "$FP" >/dev/null
 chmod 644 "$ROOT/trust/repository-root.gpg" "$ROOT/trust/index.json" "$ROOT/trust/payload.json" "$ROOT/trust/trust-policy.json"
 chmod 755 "$ROOT/trust/core"
 echo "Stage A material signed by $FP"

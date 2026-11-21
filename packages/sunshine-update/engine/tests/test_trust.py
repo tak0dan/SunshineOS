@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -14,6 +16,8 @@ sys.path.insert(0, str(ROOT))
 from src.trust import (  # noqa: E402
     TrustPolicy,
     canonical_bytes,
+    gpg_verifier,
+    validsig_matches,
     verify_stage_a,
 )
 
@@ -197,6 +201,29 @@ class TrustTests(unittest.TestCase):
         report = verify_stage_a(path, self.policy, verifier, artifact_root=self.dir)
         self.assertFalse(report.passed)
         self.assertTrue(any("invalid signature" in e for e in report.errors))
+
+
+class GpgVerifierHardeningTests(unittest.TestCase):
+    def test_validsig_matches_signer_field_only(self):
+        good = f"[GNUPG:] VALIDSIG {NEW} 2026-11-20 0 1 2 3 4 1 8 00"
+        self.assertTrue(validsig_matches(good, NEW))
+        wrong_signer = (
+            "[GNUPG:] VALIDSIG 1111111111111111111111111111111111111111 "
+            f"2026-11-20 {NEW} 1 2 3 4 1 8 00"
+        )
+        self.assertFalse(validsig_matches(wrong_signer, NEW))
+        self.assertFalse(validsig_matches("[GNUPG:] GOODSIG deadbeef", NEW))
+        self.assertFalse(validsig_matches("", NEW))
+
+    def test_gpg_verifier_rejects_writable_keyring(self):
+        with tempfile.TemporaryDirectory(prefix="sunshine-keyring-test-") as tmp:
+            keyring = Path(tmp) / "repository-root.gpg"
+            keyring.write_bytes(b"public key")
+            os.chmod(keyring, 0o666)
+            with self.assertRaises(PermissionError):
+                gpg_verifier(keyring)
+            os.chmod(keyring, stat.S_IRUSR | stat.S_IWUSR)
+            self.assertTrue(callable(gpg_verifier(keyring)))
 
 
 if __name__ == "__main__":

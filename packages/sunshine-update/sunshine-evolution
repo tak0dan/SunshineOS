@@ -30,7 +30,7 @@ run() {
 
 if [ "$(id -u)" -eq 0 ]; then
   run "$@"
-elif [ -t 0 ] && [ -t 1 ]; then
-  exec sudo -p 'Sunshine evolution needs administrator access: ' sunshine-evolution "$@"
 fi
+# Policy requires the polkit channel. Never fall back to sudo: a broad sudoers
+# grant would bypass the privileged-channel invariant checked by Stage A.
 exec pkexec sunshine-evolution "$@"
