@@ -1,1 +1,4 @@
+# Installation media intentionally permits passwordless sudo only for the live
+# session. Installed systems remove this file in post-install and require the
+# user's password for administrative actions.
 %wheel ALL=(ALL:ALL) NOPASSWD: ALL

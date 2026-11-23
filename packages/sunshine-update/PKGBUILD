@@ -1,0 +1,69 @@
+# Maintainer: Sunshine OS <tools@sunshineos.local>
+pkgname=sunshine-update
+pkgver=0.9.0
+pkgrel=2
+pkgdesc="Stage A verified evolutionary migration engine for Sunshine OS"
+arch=(x86_64)
+options=(!debug)
+url="https://github.com/tak0dan/SunshineOS_Development-Testing"
+license=(GPL-3.0-only)
+depends=(python gnupg polkit)
+makedepends=(rust)
+optdepends=(
+  'btrfs-progs: btrfs snapshots and recovery checkpoints'
+  'grub: GRUB boot integration'
+  'nvidia-dkms: NVIDIA driver preservation'
+)
+conflicts=(sunshine-evolution-engine)
+source=()
+sha256sums=()
+
+prepare() {
+  cd "$startdir/engine"
+  sha256sum -c "$startdir/engine.sha256" >/dev/null
+}
+
+build() {
+  cd "$startdir/engine/bootstrap-rust"
+  CARGO_TARGET_DIR="$startdir/engine/bootstrap-rust/target" \
+    cargo build --release --locked --offline
+}
+
+package() {
+  cd "$startdir"
+
+  install -d "$pkgdir/usr/share/sunshine/evolution"
+  cp -a engine/src engine/tests engine/fixtures engine/docs engine/evolution \
+    engine/README.md engine/.gitignore "$pkgdir/usr/share/sunshine/evolution/"
+  find "$pkgdir/usr/share/sunshine/evolution" -type d -name __pycache__ -prune -exec rm -rf {} +
+
+  install -d "$pkgdir/usr/lib/sunshine/evolution"
+  install -m 755 engine/bootstrap-rust/target/release/sunshine-bootstrap \
+    "$pkgdir/usr/lib/sunshine/evolution/sunshine-bootstrap"
+
+  install -d "$pkgdir/usr/share/sunshine/trust"
+  install -m 755 trust/core "$pkgdir/usr/share/sunshine/trust/core"
+  for file in trust/index.json trust/payload.json trust/repository-root.gpg \
+              trust/trust-policy.json; do
+    install -m 644 "$file" "$pkgdir/usr/share/sunshine/trust/"
+  done
+
+  install -d "$pkgdir/etc/sunshine/trust/receipt-home"
+  chmod 700 "$pkgdir/etc/sunshine/trust/receipt-home"
+  install -d "$pkgdir/etc/sunshine/trust"
+  chmod 700 "$pkgdir/etc/sunshine/trust"
+
+  install -Dm 755 sunshine-evolution "$pkgdir/usr/bin/sunshine-evolution"
+  install -Dm 644 sunshine-evolution.policy \
+    "$pkgdir/usr/share/polkit-1/actions/org.sunshine.evolution.policy"
+  install -Dm 644 sunshine-evolution.tmpfiles \
+    "$pkgdir/usr/lib/tmpfiles.d/sunshine-evolution.conf"
+
+  install -d "$pkgdir/usr/share/doc/$pkgname"
+  install -m 644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -m 644 engine/bootstrap-rust/README.md \
+    "$pkgdir/usr/share/doc/$pkgname/STAGE-A.md"
+  install -m 644 engine/bootstrap-rust/ROTATION.md \
+    "$pkgdir/usr/share/doc/$pkgname/ROTATION.md"
+  install -m 644 ENGINE-NOTES.md "$pkgdir/usr/share/doc/$pkgname/ENGINE-NOTES.md"
+}

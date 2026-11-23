@@ -68,6 +68,13 @@
  }
  _tool_message() { case ${0##*/} in
    sunshine-update-run) loc "System updated" ;;
+   sunshine-upgrade) loc "Upgrade done" ;;
+   sunshine-migrate) loc "Migration done" ;;
+   sunshine-sanity) loc "Sanity passed" ;;
+   sunshine-health) loc "Health checked" ;;
+   sunshine-repair) loc "Repair assessed" ;;
+   sunshine-rescue) loc "Rescue assessed" ;;
+   sunshine-report) loc "Report ready" ;;
    sunshine-restore-visuals) loc "Visuals restored" ;;
    sunshine-fix-pacman) loc "Package manager repaired" ;;
    *) loc "All done" ;;
@@ -78,7 +85,7 @@
  # Night mode uses the rose-pine pastel blue/pink palette instead of the day gold/orange one.
  sun_success_anim() {
    [ "$SUN_ANIM" = on ] && [ -t 1 ] || return 0
-   local p=/usr/share/sunshine/logo-anim/play.py msg=${1:-${SUN_SUCCESS_MSG:-}} args=(--tool --lite)
+   local p=/usr/share/sunshine/logo-anim/play.py msg=${1:-${SUN_SUCCESS_MSG:-}} args=(--tool --lite --max-text=15)
    [ -n "$msg" ] || msg=$(_tool_message)
    [ -n "$msg" ] && args+=("--title=$msg")
    [ "$SUN_NIGHT" = 1 ] && args+=(--night)

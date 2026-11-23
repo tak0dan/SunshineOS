@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Sunshine OS installer: copies the live system to disk (offline, no network needed).
 # Interactive (dialog) by default. Non-interactive: SUNSHINE_AUTO=1 plus
-#   SUNSHINE_DISK=/dev/xxx SUNSHINE_USER=name SUNSHINE_PASS=secret [SUNSHINE_HOSTNAME=..
-#   SUNSHINE_TZ=Europe/Madrid SUNSHINE_LOCALE=en_US.UTF-8 SUNSHINE_KEYMAP=us SUNSHINE_FS=ext4|btrfs SUNSHINE_ENCRYPT=yes SUNSHINE_LUKS_PASS=phrase]
+#   SUNSHINE_DISK=/dev/xxx SUNSHINE_USER=name SUNSHINE_PASS_FILE=/path/to/secret
+#   [SUNSHINE_HOSTNAME=.. SUNSHINE_TZ=Europe/Madrid SUNSHINE_LOCALE=en_US.UTF-8
+#    SUNSHINE_KEYMAP=us SUNSHINE_FS=ext4|btrfs SUNSHINE_ENCRYPT=yes
+#    SUNSHINE_LUKS_PASS_FILE=/path/to/secret]
+# Secrets are read from files, never from command-line arguments or environment values.
 set -uo pipefail
 
 TITLE="Sunshine OS Installer"
@@ -12,6 +15,11 @@ LOG=/var/log/sunshine-install.log
 AUTO=${SUNSHINE_AUTO:-0}
 
 [ "$(id -u)" -eq 0 ] || exec sudo -E "$0" "$@"
+# Shared Sunshine look: animated progress graphs and the success logo for long steps.
+[ -r /usr/local/lib/sunshine/ui.sh ] && . /usr/local/lib/sunshine/ui.sh
+if ! declare -F sun_run >/dev/null 2>&1; then
+  sun_run() { local label=$1; shift; printf '%s ...\n' "$label"; "$@"; }
+fi
 # Warm dark look for the dialogs (default dialog is bright blue)
 export DIALOGRC=/tmp/sunshine-dialogrc
 cat > "$DIALOGRC" <<'RC'
@@ -54,10 +62,16 @@ exec > >(tee -a "$LOG") 2>&1
 
 die()  { echo "ERROR: $*" >&2; command -v dialog >/dev/null && [ "$AUTO" != 1 ] && dialog --title "$TITLE" --msgbox "Installation failed:\n\n$*\n\nLog: $LOG" 12 70; cleanup; exit 1; }
 info() { echo "==> $*"; }
+read_secret_file() { local f=$1 v; [ -r "$f" ] || die "Cannot read secret file: $f"; IFS= read -r v < "$f" || true; [ -n "$v" ] || die "Empty secret file: $f"; printf '%s' "$v"; }
 
+SECRET_TMP=
 cleanup() {
   mountpoint -q "$MNT" && { sync; umount -R "$MNT" 2>/dev/null || umount -Rl "$MNT" 2>/dev/null; }
   [ -e /dev/mapper/cryptroot ] && cryptsetup close cryptroot 2>/dev/null
+  if [ -n "$SECRET_TMP" ] && [ -f "$SECRET_TMP/luks.key" ]; then
+    shred -u "$SECRET_TMP/luks.key" 2>/dev/null || rm -f "$SECRET_TMP/luks.key"
+  fi
+  [ -n "$SECRET_TMP" ] && rmdir "$SECRET_TMP" 2>/dev/null
 }
 trap 'cleanup' EXIT
 
@@ -88,13 +102,15 @@ live_dev=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null || true)
 
 HOSTNAME_=${SUNSHINE_HOSTNAME:-sunshine}
 USERNAME=${SUNSHINE_USER:-}
-PASS=${SUNSHINE_PASS:-}
+PASS=
+[ -n "${SUNSHINE_PASS_FILE:-}" ] && PASS=$(read_secret_file "$SUNSHINE_PASS_FILE")
 TZ_=${SUNSHINE_TZ:-UTC}
 LOCALE=${SUNSHINE_LOCALE:-en_US.UTF-8}
 KEYMAP=${SUNSHINE_KEYMAP:-us}
 FS=${SUNSHINE_FS:-btrfs}
 ENCRYPT=${SUNSHINE_ENCRYPT:-no}        # yes: LUKS-encrypt the system (passphrase asked at every boot)
-LUKSPASS=${SUNSHINE_LUKS_PASS:-}
+LUKSPASS=
+[ -n "${SUNSHINE_LUKS_PASS_FILE:-}" ] && LUKSPASS=$(read_secret_file "$SUNSHINE_LUKS_PASS_FILE")
 
 if [ "$AUTO" != 1 ]; then
   ask_input HOSTNAME_ "Computer name:" "$HOSTNAME_"
@@ -147,6 +163,13 @@ fi
 case "$FS" in ext4|btrfs) ;; *) die "Unsupported filesystem $FS";; esac
 [ -e "/usr/share/zoneinfo/$TZ_" ] || die "Unknown time zone $TZ_"
 
+# Keep the LUKS passphrase in a root-only temporary file so cryptsetup never sees it on a pipe.
+if [ "$ENCRYPT" = yes ]; then
+  SECRET_TMP=$(mktemp -d /run/sunshine-install.XXXXXX) || die "Cannot create secret directory"
+  chmod 700 "$SECRET_TMP"
+  ( umask 077; printf '%s' "$LUKSPASS" > "$SECRET_TMP/luks.key" ) || die "Cannot store LUKS key"
+fi
+
 # ---------- is the disk big enough? ----------
 # The copy is the UNCOMPRESSED system (several times the ISO size). Check before erasing anything and say it plainly.
 need=$(df -B1 --output=used "$SRC" 2>/dev/null | tail -1 | tr -dc 0-9); need=${need:-0}
@@ -176,8 +199,8 @@ RAWROOT=$ROOT
 if [ "$ENCRYPT" = yes ]; then
   info "Encrypting the system partition"
   # LUKS1: GRUB reads it directly, so the boot menu can unlock the disk (LUKS2 with Argon2 is not readable by GRUB)
-  printf %s "$LUKSPASS" | cryptsetup luksFormat --type luks1 --batch-mode "$RAWROOT" - || die "cryptsetup luksFormat failed"
-  printf %s "$LUKSPASS" | cryptsetup open "$RAWROOT" cryptroot - || die "cryptsetup open failed"
+  cryptsetup luksFormat --type luks1 --batch-mode "$RAWROOT" "$SECRET_TMP/luks.key" || die "cryptsetup luksFormat failed"
+  cryptsetup open "$RAWROOT" cryptroot --key-file "$SECRET_TMP/luks.key" || die "cryptsetup open failed"
   ROOT=/dev/mapper/cryptroot
 fi
 
@@ -213,12 +236,17 @@ fi
 if [ "$BOOT" = uefi ]; then mkdir -p "$MNT/boot/efi"; mount "$ESP" "$MNT/boot/efi" || die "mount ESP failed"; fi
 
 # ---------- copy system ----------
-info "Copying system (this takes a few minutes)"
-rsync -aHAXx --info=progress2 --no-inc-recursive \
-  --exclude=/boot/efi --exclude='/etc/pacman.d/gnupg' "$SRC"/ "$MNT"/ || {
-  free=$(df -B1 --output=avail "$MNT" 2>/dev/null | tail -1 | tr -dc 0-9)
-  if [ "${free:-1}" -lt 52428800 ]; then die "The disk filled up while copying: it is too small for the installed system. Use a bigger disk."; fi
-  die "Copying the system failed (see $LOG)"; }
+copy_system() {
+  rsync -aHAXx --info=progress2 --no-inc-recursive \
+    --exclude=/boot/efi --exclude='/etc/pacman.d/gnupg' "$SRC"/ "$MNT"/ || {
+    free=$(df -B1 --output=avail "$MNT" 2>/dev/null | tail -1 | tr -dc 0-9)
+    if [ "${free:-1}" -lt 52428800 ]; then echo "The disk filled up while copying: it is too small for the installed system. Use a bigger disk."; else echo "rsync failed while copying the system."; fi
+    return 1
+  }
+}
+SUN_FIX_HINT="Check free space and disk errors; then restart the installer."
+sun_run "Copying Sunshine OS to disk" copy_system || die "Copying the system failed (see $LOG)"
+SUN_FIX_HINT="Check the output above; sunshine-doctor --fix repairs what is safe."
 mkdir -p "$MNT"/{dev,proc,sys,run,tmp,mnt,boot/efi}
 chmod 1777 "$MNT/tmp"
 
@@ -232,7 +260,7 @@ genfstab -U "$MNT" > "$MNT/etc/fstab" || die "genfstab failed"
 if [ "$ENCRYPT" = yes ]; then
   # key file inside the (encrypted) system and its initramfs: GRUB asks for the passphrase, the initramfs does not ask again
   dd if=/dev/urandom of="$MNT/crypto_keyfile.bin" bs=512 count=4 status=none && chmod 000 "$MNT/crypto_keyfile.bin" || die "keyfile creation failed"
-  printf %s "$LUKSPASS" | cryptsetup luksAddKey "$RAWROOT" "$MNT/crypto_keyfile.bin" - || die "cryptsetup luksAddKey failed"
+  cryptsetup luksAddKey "$RAWROOT" "$MNT/crypto_keyfile.bin" --key-file "$SECRET_TMP/luks.key" || die "cryptsetup luksAddKey failed"
   LUKS_UUID=$(blkid -s UUID -o value "$RAWROOT")
 fi
 
@@ -261,8 +289,7 @@ info "Configuring installed system"
 for d in dev proc sys run; do mount --rbind "/$d" "$MNT/$d" && mount --make-rslave "$MNT/$d"; done
 [ -d /sys/firmware/efi/efivars ] && mount --bind /sys/firmware/efi/efivars "$MNT/sys/firmware/efi/efivars" 2>/dev/null
 
-info "Installing the Hyprland desktop"
-/usr/local/bin/sunshine-hyprland-install "$MNT" || true
+sun_run "Installing the Hyprland desktop" /usr/local/bin/sunshine-hyprland-install "$MNT" || true
 
 echo "$HOSTNAME_" > "$MNT/etc/hostname"
 printf '127.0.0.1 localhost\n::1 localhost\n127.0.1.1 %s\n' "$HOSTNAME_" > "$MNT/etc/hosts"
@@ -288,7 +315,7 @@ EOF
 { echo 'HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block encrypt filesystems fsck)'
   [ "$ENCRYPT" = yes ] && echo 'FILES=(/crypto_keyfile.bin)'; } > "$MNT/etc/mkinitcpio.conf.d/sunshine.conf"
 
-/usr/local/bin/sunshine-snapshots-setup "$MNT" || true   # btrfs only: snapper, snapshot boot entries (after the initramfs config exists)
+sun_run "Preparing restore points" /usr/local/bin/sunshine-snapshots-setup "$MNT" || true   # btrfs only: snapper, snapshot boot entries (after the initramfs config exists)
 cat > "$MNT/root/.sunshine-chroot.sh" <<EOS
 set -e
 locale-gen
@@ -321,7 +348,7 @@ sed -i '/^#\?GRUB_THEME=/d;/^#\?GRUB_GFXMODE=/d;/^#\?GRUB_TERMINAL_OUTPUT=/d' /e
 printf '%s\n' 'GRUB_DISABLE_OS_PROBER=false' 'GRUB_THEME="/usr/share/grub/themes/sunshine/theme.txt"' 'GRUB_GFXMODE=auto' 'GRUB_TERMINAL_OUTPUT=gfxterm' 'GRUB_GFXPAYLOAD_LINUX=keep' 'GRUB_DISABLE_BOOTNEXT=true' >> /etc/default/grub
 sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=6 vt.default_red=11,243,166,249,137,245,148,205,88,243,181,249,137,245,148,239 vt.default_grn=16,139,227,226,180,194,226,184,91,139,240,226,180,194,226,229 vt.default_blu=32,168,161,175,250,231,213,240,112,168,174,175,250,231,213,255"/' /etc/default/grub
 EOS
-echo "$USERNAME:$PASS" | chroot "$MNT" /bin/bash -c 'umask 077; cat > /root/.sunshine-cred'
+( umask 077; printf '%s:%s\n' "$USERNAME" "$PASS" > "$MNT/root/.sunshine-cred" ) || die "Cannot store installation credentials"
 cat >> "$MNT/root/.sunshine-chroot.sh" <<'EOS'
 chpasswd < /root/.sunshine-cred
 shred -u /root/.sunshine-cred
@@ -341,7 +368,9 @@ else
   echo "grub-install --target=i386-pc --recheck $DISK" >> "$MNT/root/.sunshine-chroot.sh"
 fi
 echo 'grub-mkconfig -o /boot/grub/grub.cfg' >> "$MNT/root/.sunshine-chroot.sh"
-chroot "$MNT" /bin/bash /root/.sunshine-chroot.sh || die "Configuration in chroot failed (see $LOG)"
+SUN_SUCCESS_MSG="Installation configured"
+sun_run "Configuring the installed system" chroot "$MNT" /bin/bash /root/.sunshine-chroot.sh || die "Configuration in chroot failed (see $LOG)"
+SUN_SUCCESS_MSG=
 rm -f "$MNT/root/.sunshine-chroot.sh"
 
 # sanity checks before declaring success

@@ -1,0 +1,5 @@
+NAME="Sunshine OS"
+PRETTY_NAME="Sunshine OS"
+ID=sunshineos
+ID_LIKE=arch
+BUILD_ID=rolling

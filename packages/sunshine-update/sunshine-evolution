@@ -1,0 +1,36 @@
+#!/bin/sh
+# Privileged entry point for the Sunshine Evolution Engine.
+#
+# Stage A always runs before Core: Rust verifies the signed index, the pinned
+# trust chain, the artifact digest and signature, signs a receipt, then execs
+# the verified Core wrapper. No broad sudoers rule is used.
+set -eu
+TRUST=/usr/share/sunshine/trust
+BIN=/usr/lib/sunshine/evolution/sunshine-bootstrap
+POLICY=$TRUST/trust-policy.json
+INDEX=$TRUST/index.json
+KEYRING=$TRUST/repository-root.gpg
+RECEIPT_HOME=/etc/sunshine/trust/receipt-home
+
+[ -x "$BIN" ] || { echo "sunshine-evolution: bootstrap binary missing" >&2; exit 3; }
+[ -d "$RECEIPT_HOME" ] || { echo "sunshine-evolution: receipt key home missing; provision $RECEIPT_HOME (root:root 0700)" >&2; exit 3; }
+
+FP=$(sed -n 's/.*"fingerprint": *"\([0-9A-Fa-f]*\)".*/\1/p' "$POLICY" | head -1)
+[ -n "$FP" ] || { echo "sunshine-evolution: no receipt signing fingerprint in policy" >&2; exit 3; }
+if ! GNUPGHOME="$RECEIPT_HOME" gpg --batch --list-secret-keys "$FP" >/dev/null 2>&1; then
+  echo "sunshine-evolution: receipt signing key $FP is not installed in $RECEIPT_HOME" >&2
+  exit 3
+fi
+
+run() {
+  exec "$BIN" handoff --policy "$POLICY" --index "$INDEX" --keyring "$KEYRING" \
+    --report /run/sunshine/stage-a.json --receipt /run/sunshine/handoff-receipt.json \
+    -- "$@"
+}
+
+if [ "$(id -u)" -eq 0 ]; then
+  run "$@"
+fi
+# Policy requires the polkit channel. Never fall back to sudo: a broad sudoers
+# grant would bypass the privileged-channel invariant checked by Stage A.
+exec pkexec sunshine-evolution "$@"

@@ -1,0 +1,83 @@
+# G5 source matrix: every supported source shape converges through the same
+# engine with an explicit expected plan. The axes are named so a CI failure
+# points at the capability that regressed, not at an opaque fixture number.
+
+[[cases]]
+fixture = "clean-arch"
+axes = ["btrfs", "grub"]
+source_profile = "arch-standard"
+filesystem = "btrfs"
+luks = false
+btrfs = true
+bootloader = "grub"
+aur = false
+foreign_packages = []
+forbidden_install_packages = []
+expected_checkpoint_markers = []
+
+[[cases]]
+fixture = "arch-ext4-luks-systemd-boot"
+axes = ["ext4", "luks", "systemd-boot"]
+source_profile = "arch-customized"
+filesystem = "ext4"
+luks = true
+btrfs = false
+bootloader = "systemd-boot"
+aur = false
+foreign_packages = []
+forbidden_install_packages = ["btrfs-progs", "os-prober"]
+expected_checkpoint_markers = ["LUKS headers", "/etc/crypttab"]
+
+[[cases]]
+fixture = "arch-btrfs-grub-nvidia-aur"
+axes = ["btrfs", "grub", "nvidia", "dkms", "mixed-aur"]
+source_profile = "arch-customized"
+filesystem = "btrfs"
+luks = false
+btrfs = true
+bootloader = "grub"
+aur = true
+foreign_packages = ["nvidia-dkms", "sunshine-theme-rose-pine", "yay"]
+forbidden_install_packages = []
+expected_checkpoint_markers = []
+
+[[cases]]
+fixture = "arch-five-year-old"
+axes = ["aged-arch", "btrfs", "grub"]
+source_profile = "arch-standard"
+filesystem = "btrfs"
+luks = false
+btrfs = true
+bootloader = "grub"
+aur = false
+foreign_packages = []
+forbidden_install_packages = []
+expected_checkpoint_markers = []
+
+[[cases]]
+fixture = "old-sunshine"
+axes = ["old-sunshine", "btrfs", "grub"]
+source_profile = "sunshine-installed"
+filesystem = "btrfs"
+luks = false
+btrfs = true
+bootloader = "grub"
+aur = false
+foreign_packages = []
+forbidden_install_packages = []
+expected_checkpoint_markers = []
+
+[convergence]
+# One implementation: every source must emit the same core convergence core.
+required_operation_types = [
+    "InstallPackages",
+    "InstallKernel",
+    "GenerateInitramfs",
+    "InstallBootEntry",
+    "CreateCheckpoint",
+    "RegisterComponent",
+    "EnableService",
+    "ValidateCapability",
+]
+required_package_names = ["foundation.full-upgrade"]
+forbidden_operation_types = ["RemovePackages"]

@@ -1,0 +1,8 @@
+# Sunshine OS declarative configuration (legacy fixture)
+[general]
+version = "1.0.0"
+profile = "hyprland"
+
+[desktop]
+session = "hyprland"
+display_manager = "sddm"

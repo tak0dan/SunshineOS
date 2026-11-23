@@ -1,0 +1,14 @@
+{
+  "evolution_definition": "fixture: scheme.toml",
+  "resolved_target_manifest": "fixture: resolved-target.json",
+  "transition_catalog_changes": "fixture: transitions.toml",
+  "engine_compatibility": "fixture: versions.toml",
+  "inventory_schema_compatibility": "fixture: INV7",
+  "package_repository_manifest": "fixture: repository.json",
+  "configuration_reconciliation": "fixture: configuration.json",
+  "recovery_requirements": "fixture: recovery.json",
+  "artifact_integrity_manifest": "fixture: artifacts.json",
+  "migration_qualification_results": "fixture: qualification-records.json",
+  "historical_migration_results": "fixture: historical.json",
+  "rollback_recovery_qualification": "fixture: rollback.json"
+}
